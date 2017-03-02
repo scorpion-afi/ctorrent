@@ -20,12 +20,21 @@ int main( void )
 		return 1;
 	}
 
-	fifo_write_fd = open( "fifo", O_WRONLY );
+	fifo_write_fd = open( "fifo", O_RDWR );
 	if( fifo_write_fd < 0 )
 	{
 		perror( "try to open fifo file" );
 		return 1;
 	}
+
+	char buf[64];
+
+	int current_status_flags = fcntl( fifo_write_fd, F_GETFL );
+	fcntl( fifo_write_fd, F_SETFL, current_status_flags | O_NONBLOCK );
+	std::cout << "wait for writer...";
+	std::cout.flush();
+	read( fifo_write_fd, buf, 1 );
+	std::cout << " ok.\n";
 
 	int size_to_write = sizeof("hi cruel world.");
 	const char* str = "hi cruel world.";
