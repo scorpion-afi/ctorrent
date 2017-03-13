@@ -2,64 +2,73 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <semaphore.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #include <iostream>
 
+const std::string semaphore_name = "/tdm-video-playback";
+
 int main( void )
 {
-	int fifo_write_fd;
-	int ret;
+	pid_t child_pid;
+	sem_t* sem;
 
-	ret = mkfifo( "fifo", S_IRUSR | S_IWUSR );
-	if( ret )
+	/* an initial value is 0 */
+	sem = sem_open( semaphore_name.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR, 0 );
+	if( sem == SEM_FAILED )
 	{
-		perror( "try to create fifo file" );
+		perror( "an attempt to create named semaphore failed" );
 		return 1;
 	}
 
-	fifo_write_fd = open( "fifo", O_RDWR );
-	if( fifo_write_fd < 0 )
+	child_pid = fork();
+	if( child_pid == -1 )
 	{
-		perror( "try to open fifo file" );
+		perror( "an attempt to fork failed" );
 		return 1;
 	}
 
-	char buf[64];
+	/* child related code */
 
-	int current_status_flags = fcntl( fifo_write_fd, F_GETFL );
-	fcntl( fifo_write_fd, F_SETFL, current_status_flags | O_NONBLOCK );
-	std::cout << "wait for writer...";
-	std::cout.flush();
-	read( fifo_write_fd, buf, 1 );
-	std::cout << " ok.\n";
-
-	int size_to_write = sizeof("hi cruel world.");
-	const char* str = "hi cruel world.";
-
-	while( size_to_write )
+	if( !child_pid )
 	{
-		ret = write( fifo_write_fd, str, size_to_write );
-		if( ret < 0 )
+		sem = sem_open( semaphore_name.c_str(), O_RDWR );
+		if( sem == SEM_FAILED )
 		{
-			if( errno == EINTR )
-			{
-				size_to_write -= ret;
-				str += ret;
-				continue;
-			}
-
-			perror( "try to write to  fifo file" );
+			perror( "[client] an attempt to open named semaphore failed" );
 			return 1;
 		}
 
-		size_to_write -= ret;
-		str += ret;
+		while( 1 )
+		{
+			int ret;
+
+			/* wait until parent notices us */
+			ret = sem_wait( sem );
+			if( ret < 0 && errno == EINTR )
+				continue;
+			else
+				break;
+		}
+
+		sem_close( sem );
+		sem_unlink( semaphore_name.c_str() );
+
+		return 0;
 	}
 
-	close( fifo_write_fd );
+	/* parent related code */
 
-	std::cout << "the end." << std::endl;
+	/* we got to allow the client to open a semaphore :-) */
+	sleep(1);
+
+	sem_post( sem );
+	sem_close( sem );
+	sem_unlink( semaphore_name.c_str() );
+
+	return 0;
 }
