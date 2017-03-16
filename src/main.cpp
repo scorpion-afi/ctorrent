@@ -12,24 +12,32 @@
 
 #include <sys/socket.h>
 #include <thread>
+#include <functional>
 
+using callback_ptr = void (*)(void*);
+
+struct message
+{
+	callback_ptr func;
+	void* data;
+};
 
 void read_thread_func( int socket_fd )
 {
 	msghdr msg = { 0, };
 	iovec iov = { 0, };
-	char str[512];
 	int ret;
 
-	iov.iov_base = str;
-	iov.iov_len = sizeof( str );
+	message my_msg;
 
-	msg.msg_name = nullptr;
-	msg.msg_namelen = 0;
+	iov.iov_base = &my_msg;
+	iov.iov_len = sizeof(my_msg);
 
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
+	msg.msg_name = nullptr;
+	msg.msg_namelen = 0;
 	msg.msg_control = nullptr;
 	msg.msg_controllen = 0;
 
@@ -47,28 +55,44 @@ void read_thread_func( int socket_fd )
 		goto exit;
 	}
 
-	std::cout << "size of a message: " << ret << "(bytes), message: " << str << std::endl;
+	my_msg.func( my_msg.data );
+
+	std::cout << "size of a message: " << ret << "(bytes)" << std::endl;
 
 exit:
 	close( socket_fd );
+}
+
+
+void some_callback( void* data )
+{
+	int* dig = static_cast<int*>(data);
+
+	std::cout << *dig << std::endl;
+
+	delete dig;
 }
 
 void send_message( int socket_fd )
 {
 	msghdr msg = { 0, };
 	iovec iov = { 0, };
-	std::string str = "hi cruel world.";
 	int ret;
 
-	iov.iov_base = const_cast<char*>( str.c_str() );
-	iov.iov_len = str.size() + 1;	/* null-terminated character */
+	message my_msg;
 
-	msg.msg_name = nullptr;
-	msg.msg_namelen = 0;
+
+	my_msg.func = some_callback;
+	my_msg.data = new int(19);
+
+	iov.iov_base = &my_msg;
+	iov.iov_len = sizeof(my_msg);
 
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
+	msg.msg_name = nullptr;
+	msg.msg_namelen = 0;
 	msg.msg_control = nullptr;
 	msg.msg_controllen = 0;
 
