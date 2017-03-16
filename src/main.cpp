@@ -9,81 +9,55 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <mqueue.h>
-
-#include <vector>
-#include <thread>
+#include <sys/mman.h>
+#include <sys/wait.h>
 
 const std::string mq_name = "/my_queue";
 
-void read_thread_body( void )
-{
-	mqd_t mq;
-	mq_attr _mq_attr;
-	int ret;
-
-	mq = mq_open( mq_name.c_str(), O_RDONLY );
-	if( mq < 0 )
-	{
-		char buf[256];
-		std::cout << "an attempt to open message queue failed: " <<
-				strerror_r( errno, buf, sizeof(buf) ) << std::endl;
-
-		return;
-	}
-
-	mq_getattr( mq, &_mq_attr );
-
-	std::vector<char> message( _mq_attr.mq_msgsize );
-
-	while( 1 )
-	{
-		ret = mq_receive( mq, message.data(), message.size(), nullptr );
-		if( ret < 0 )
-		{
-			if( errno == EINTR )
-				continue;
-
-			char buf[256];
-			std::cout << "an attempt to dequeue a message failed: " <<
-					strerror_r( errno, buf, sizeof(buf) ) << std::endl;
-
-			goto exit;
-		}
-
-		break;
-	}
-
-	std::cout << "a message has been received: \"" << message.data() <<
-			"\", amount of data received (in bytes): " << ret << std::endl;
-
-exit:
-	mq_close( mq );
-	mq_unlink( mq_name.c_str() );
-}
-
 int main( void )
 {
-	mqd_t mq;
-	std::string message = "hi, cruel world.";
+	char* buf;
+	pid_t child_pid;
+	int page_size = getpagesize();
 
-	mq = mq_open( mq_name.c_str(), O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR, nullptr );
-	if( mq < 0 )
+	/*buf = static_cast<char*>( mmap( nullptr, page_size, PROT_WRITE | PROT_READ,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 ) );*/
+	buf = static_cast<char*>( mmap( nullptr, page_size, PROT_WRITE | PROT_READ,
+			MAP_SHARED | MAP_ANONYMOUS, -1, 0 ) );
+	if( buf == MAP_FAILED )
 	{
-		char buf[256];
-		std::cout << "an attempt to create message queue failed: " <<
-				strerror_r( errno, buf, sizeof(buf) ) << std::endl;
-
+		perror( "an attempt to mmap memory anonymously failed" );
 		return 1;
 	}
 
-	std::thread read_thread(read_thread_body);
+	child_pid = fork();
+	if( child_pid < 0 )
+	{
+		perror( "an attempt to fork failed" );
+		return 1;
+	}
 
-	mq_send( mq, message.data(), message.size(), 0 );
-	read_thread.join();
+	/* client code */
+	if( !child_pid )
+	{
+		sleep(1);
 
-	mq_close( mq );
-	mq_unlink( mq_name.c_str() );
+		std::cout << "child's reading..." << std::endl;
+		std::cout << buf << std::endl;
+
+		std::cout << "child's writing..." << std::endl;
+		snprintf( buf, page_size, "by" );
+		buf[2] = ',';	/* to see all string the parent has written */
+
+		std::cout << buf << std::endl;
+
+		return 0;
+	}
+
+	std::cout << "parent's writing..." << std::endl;
+	snprintf( buf, page_size, "hi, cruel world."  );
+
+	wait( nullptr );
 
 	return 0;
 }
