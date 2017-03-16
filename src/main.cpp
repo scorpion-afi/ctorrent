@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <cstring>
+#include <string>
 
 #include <unistd.h>
 #include <errno.h>
@@ -9,55 +10,103 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <sys/mman.h>
-#include <sys/wait.h>
+#include <sys/socket.h>
+#include <thread>
 
-const std::string mq_name = "/my_queue";
+
+void read_thread_func( int socket_fd )
+{
+	msghdr msg = { 0, };
+	iovec iov = { 0, };
+	char str[512];
+	int ret;
+
+	iov.iov_base = str;
+	iov.iov_len = sizeof( str );
+
+	msg.msg_name = nullptr;
+	msg.msg_namelen = 0;
+
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	msg.msg_control = nullptr;
+	msg.msg_controllen = 0;
+
+	ret = recvmsg( socket_fd, &msg, 0 );
+	if( ret < 0 )
+	{
+		perror( "an attempt to receive a message failed" );
+		goto exit;
+	}
+
+	if( ( msg.msg_flags & MSG_TRUNC ) || ( msg.msg_flags & MSG_ERRQUEUE ) )
+	{
+		std::cout << "msg.msg_flags: " << msg.msg_flags << std::endl;
+
+		goto exit;
+	}
+
+	std::cout << "size of a message: " << ret << "(bytes), message: " << str << std::endl;
+
+exit:
+	close( socket_fd );
+}
+
+void send_message( int socket_fd )
+{
+	msghdr msg = { 0, };
+	iovec iov = { 0, };
+	std::string str = "hi cruel world.";
+	int ret;
+
+	iov.iov_base = const_cast<char*>( str.c_str() );
+	iov.iov_len = str.size() + 1;	/* null-terminated character */
+
+	msg.msg_name = nullptr;
+	msg.msg_namelen = 0;
+
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	msg.msg_control = nullptr;
+	msg.msg_controllen = 0;
+
+	ret = sendmsg( socket_fd, &msg, MSG_NOSIGNAL );
+	if( ret < 0 )
+		perror( "an attempt to send a message failed" );
+
+	close( socket_fd );
+}
 
 int main( void )
 {
-	char* buf;
-	pid_t child_pid;
-	int page_size = getpagesize();
+	int ipc_sockes[2];
+	int ret;
 
-	/*buf = static_cast<char*>( mmap( nullptr, page_size, PROT_WRITE | PROT_READ,
-			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 ) );*/
-	buf = static_cast<char*>( mmap( nullptr, page_size, PROT_WRITE | PROT_READ,
-			MAP_SHARED | MAP_ANONYMOUS, -1, 0 ) );
-	if( buf == MAP_FAILED )
+	ret = socketpair( AF_UNIX, SOCK_SEQPACKET, 0, ipc_sockes );
+	if( ret < 0 )
 	{
-		perror( "an attempt to mmap memory anonymously failed" );
+		perror( "an attempt to create socketpair with a socket type SOCK_SEQPACKET failed" );
 		return 1;
 	}
 
-	child_pid = fork();
-	if( child_pid < 0 )
+	/* disable SIGIO delivering */
+	for( int i : ipc_sockes )
 	{
-		perror( "an attempt to fork failed" );
-		return 1;
+		int status_flags;
+
+		status_flags = fcntl( ipc_sockes[i], F_GETFL );
+		fcntl( ipc_sockes[i], F_SETFL, status_flags & ~O_ASYNC );
 	}
 
-	/* client code */
-	if( !child_pid )
-	{
-		sleep(1);
+	std::thread read_thread( read_thread_func, dup( ipc_sockes[0] ) );
+	close( ipc_sockes[0] );
 
-		std::cout << "child's reading..." << std::endl;
-		std::cout << buf << std::endl;
+	send_message( dup( ipc_sockes[1] ) );
+	close( ipc_sockes[1] );
 
-		std::cout << "child's writing..." << std::endl;
-		snprintf( buf, page_size, "by" );
-		buf[2] = ',';	/* to see all string the parent has written */
+	read_thread.join();
 
-		std::cout << buf << std::endl;
-
-		return 0;
-	}
-
-	std::cout << "parent's writing..." << std::endl;
-	snprintf( buf, page_size, "hi, cruel world."  );
-
-	wait( nullptr );
-
-	return 0;
+	std::cout << "the end." << std::endl;
 }
