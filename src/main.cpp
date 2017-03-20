@@ -14,6 +14,8 @@
 #include <thread>
 #include <functional>
 
+//#include <rpc/rpc.h>
+
 using callback_ptr = void (*)(void*);
 
 struct message
@@ -131,6 +133,8 @@ int main( void )
 	close( ipc_sockes[1] );
 
 	read_thread.join();
+
+	//callrpc( nullptr, 1, 1, 1, nullptr, nullptr, nullptr, nullptr );
 
 	std::cout << "the end." << std::endl;
 }
