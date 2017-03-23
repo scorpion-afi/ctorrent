@@ -11,4 +11,4 @@ add_executable( ${app_name} ${src} )
 
 target_include_directories( ${app_name} PUBLIC ${inc_dir} )
 target_compile_options( ${app_name} PUBLIC -std=c++11 -Wall -g3 -O0 )
-target_link_libraries( ${app_name} -pthread -lrt)
+target_link_libraries( ${app_name} -lboost_regex )

@@ -13,17 +13,22 @@
 #include <sys/socket.h>
 #include <wait.h>
 
-#include <boost/lambda/lambda.hpp>
-#include <iterator>
-#include <algorithm>
+#include <boost/regex.hpp>
+
 
 
 int main( void )
 {
-	using namespace boost::lambda;
-	typedef std::istream_iterator<int> in;
+	std::string line;
+	boost::regex pat( "^Subject: (Re: |Aw: )*(.*)" );
 
-	std::for_each( in(std::cin), in(), std::cout << (_1 * 3) << " " );
+	while( std::cin )
+	{
+		std::getline( std::cin, line );
+		boost::smatch matches;
 
-	return 0;
+		if( boost::regex_match( line, matches, pat ) )
+			std::cout << matches[2] << std::endl;
+
+	}
 }
