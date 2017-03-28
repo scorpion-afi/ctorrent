@@ -1,43 +1,50 @@
 #include <iostream>
-#include <stdio.h>
 
-#include <unistd.h>
-
-#include <pthread.h>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
 int some_check = 1;
-pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+std::condition_variable cond_var;
+std::mutex mtx;
 
 
-void* thread_func( void* )
+void thread_func( void )
 {
-	pthread_mutex_lock( &mtx );
+	std::unique_lock<std::mutex> lock( mtx );
 
-	while( some_check )
-	{
-		pthread_cond_wait( &cond_var, &mtx );
-		std::cout << pthread_self() << ", " <<some_check << std::endl;
+	cond_var.wait( lock,
+			[] { std::cout << "some_check: " << some_check << std::endl; return some_check == 0; } );
 
-		if( some_check ) some_check = 0;
-	}
-
-	pthread_mutex_unlock( &mtx );
-
-	return nullptr;
+	std::cout << "finishing...\n";
 }
 
 int main( void )
 {
-	pthread_t threads[4] = { 0 };
+	std::thread threads[4] = { 	std::thread(thread_func),
+								std::thread(thread_func),
+								std::thread(thread_func),
+								std::thread(thread_func) };
+
+	std::this_thread::__sleep_for( std::chrono::seconds(2), std::chrono::nanoseconds(0) );
+
+	/* cause ALL threads being moved from cond-queue to mtx-queue */
+	std::cout << "fail notifying...\n";
+	cond_var.notify_all();
+
+	std::this_thread::__sleep_for( std::chrono::seconds(2), std::chrono::nanoseconds(0) );
+
+	{
+		std::lock_guard<std::mutex> lk( mtx );
+		some_check = 0;
+	}
+
+	std::cout << "real notifying...\n";
+	cond_var.notify_all();
 
 	for( auto& thr : threads )
-		pthread_create( &thr, nullptr, thread_func, nullptr );
+		thr.join();
 
-	sleep( 2 );
-	//pthread_cond_signal( &cond_var );  // cause ONE thread being moved from cond-queue to mtx-queue
-	pthread_cond_broadcast( &cond_var ); // cause ALL threads being moved from cond-queue to mtx-queue
-
-	for( auto& thr : threads )
-		pthread_join( thr, nullptr );
+	std::cout << "the end.\n";
 }
