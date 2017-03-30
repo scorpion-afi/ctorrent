@@ -1,50 +1,71 @@
 #include <iostream>
+#include <fstream>
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
-
-int some_check = 1;
-std::condition_variable cond_var;
-std::mutex mtx;
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 
-void thread_func( void )
+class base
 {
-	std::unique_lock<std::mutex> lock( mtx );
+public:
+	base( int i, double d, char c ) : i(i), d(d), c(c) {}
+	base() : i(0), d(0.0), c('a') {}
 
-	cond_var.wait( lock,
-			[] { std::cout << "some_check: " << some_check << std::endl; return some_check == 0; } );
+	void show( void ) const
+	{
+		std::cout << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
+	}
 
-	std::cout << "finishing...\n";
-}
+private:
+
+	/* an access class should have an access to our private method 'serialize' */
+	friend class boost::serialization::access;
+
+	template< class Archive >
+	void serialize( Archive& ar, const unsigned int version )
+	{
+		ar & i;
+		ar & d;
+		ar & c;
+	}
+
+	int i;
+	double d;
+	char c;
+};
+
 
 int main( void )
 {
-	std::thread threads[4] = { 	std::thread(thread_func),
-								std::thread(thread_func),
-								std::thread(thread_func),
-								std::thread(thread_func) };
+	base bs( 25, 2.5, 'S' );
 
-	std::this_thread::__sleep_for( std::chrono::seconds(2), std::chrono::nanoseconds(0) );
-
-	/* cause ALL threads being moved from cond-queue to mtx-queue */
-	std::cout << "fail notifying...\n";
-	cond_var.notify_all();
-
-	std::this_thread::__sleep_for( std::chrono::seconds(2), std::chrono::nanoseconds(0) );
+	std::ofstream ofs( "archive.txt" );
 
 	{
-		std::lock_guard<std::mutex> lk( mtx );
-		some_check = 0;
+		/* text_oarchive dtor destroys an ofstream object !!! */
+		boost::archive::text_oarchive text_output_archive( ofs );
+
+		text_output_archive << bs;
+		text_output_archive & 10;
+		text_output_archive << std::string( "hi cruel world" );
 	}
 
-	std::cout << "real notifying...\n";
-	cond_var.notify_all();
+	base restored_bs;
 
-	for( auto& thr : threads )
-		thr.join();
+	{
+		std::ifstream ifs( "archive.txt" );
+		boost::archive::text_iarchive text_input_archive( ifs );
 
-	std::cout << "the end.\n";
+		int a; std::string str;
+
+		text_input_archive >> restored_bs;
+		text_input_archive & a;
+		text_input_archive >> str;
+
+		std::cout << "a: " << a << ", str: " << str << std::endl;
+	}
+
+	restored_bs.show();
+
+	return 0;
 }
