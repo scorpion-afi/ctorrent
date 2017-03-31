@@ -4,16 +4,18 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+const std::string archive_name( "archive.txt" );
 
 class base
 {
 public:
 	base( int i, double d, char c ) : i(i), d(d), c(c) {}
 	base() : i(0), d(0.0), c('a') {}
+	virtual ~base() {}
 
-	void show( void ) const
+	virtual void show( void ) const
 	{
-		std::cout << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
+		std::cout << "base object: " << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
 	}
 
 private:
@@ -24,6 +26,7 @@ private:
 	template< class Archive >
 	void serialize( Archive& ar, const unsigned int version )
 	{
+		/* load order is equal to store order */
 		ar & i;
 		ar & d;
 		ar & c;
@@ -34,38 +37,67 @@ private:
 	char c;
 };
 
+class derived : public base
+{
+public:
+	explicit derived( std::string&& str ) : base(3, 2.5, 'b'), str(str) {}
+	derived() {}
+
+	void show( void ) const override
+	{
+		std::cout << "derived object:\n ";
+		base::show();
+		std::cout << " str: " << str << std::endl;
+	}
+
+private:
+
+	friend class boost::serialization::access;
+
+	template< class Archive >
+	void serialize( Archive& ar, const unsigned int version )
+	{
+		/* an insane way to serialize base part of derived object */
+		ar & boost::serialization::base_object<base>( *this );
+		ar & str;
+	}
+
+	std::string str;
+};
 
 int main( void )
 {
 	base bs( 25, 2.5, 'S' );
-
-	std::ofstream ofs( "archive.txt" );
+	derived der( "buy cruel world" );
 
 	{
-		/* text_oarchive dtor destroys an ofstream object !!! */
+		std::ofstream ofs( archive_name );
 		boost::archive::text_oarchive text_output_archive( ofs );
 
 		text_output_archive << bs;
-		text_output_archive & 10;
+		text_output_archive & 10; // for output type of archive & is equal to <<
 		text_output_archive << std::string( "hi cruel world" );
+		text_output_archive << der;
 	}
-
-	base restored_bs;
 
 	{
-		std::ifstream ifs( "archive.txt" );
+		std::ifstream ifs( archive_name );
 		boost::archive::text_iarchive text_input_archive( ifs );
 
-		int a; std::string str;
+		base restored_bs;
+		int a;
+		std::string str;
+		derived der;
 
 		text_input_archive >> restored_bs;
-		text_input_archive & a;
+		text_input_archive & a;	// for input type of archive & is equal to >>
 		text_input_archive >> str;
+		text_input_archive >> der;
 
+		restored_bs.show();
 		std::cout << "a: " << a << ", str: " << str << std::endl;
+		der.show();
 	}
-
-	restored_bs.show();
 
 	return 0;
 }
