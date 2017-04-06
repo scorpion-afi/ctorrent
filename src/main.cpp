@@ -1,10 +1,14 @@
 #include <iostream>
 #include <fstream>
 
+#include <memory>
+
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+
 const std::string archive_name( "archive.txt" );
+
 
 class base
 {
@@ -13,7 +17,7 @@ public:
 	base() : i(0), d(0.0), c('a') {}
 	virtual ~base() {}
 
-	virtual void show( void ) const
+	void show( void ) const
 	{
 		std::cout << "base object: " << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
 	}
@@ -43,7 +47,7 @@ public:
 	explicit derived( std::string&& str ) : base(3, 2.5, 'b'), str(str) {}
 	derived() {}
 
-	void show( void ) const override
+	void show( void ) const
 	{
 		std::cout << "derived object:\n ";
 		base::show();
@@ -65,39 +69,24 @@ private:
 	std::string str;
 };
 
+
 int main( void )
 {
-	base bs( 25, 2.5, 'S' );
-	derived der( "buy cruel world" );
-
 	{
 		std::ofstream ofs( archive_name );
 		boost::archive::text_oarchive text_output_archive( ofs );
 
-		text_output_archive << bs;
-		text_output_archive & 10; // for output type of archive & is equal to <<
-		text_output_archive << std::string( "hi cruel world" );
-		text_output_archive << der;
+		std::shared_ptr<base> bs = std::make_shared<base>( 10, 2.5, 's' );
+		bs->show();
+
+		text_output_archive << bs.get();
 	}
 
-	{
-		std::ifstream ifs( archive_name );
-		boost::archive::text_iarchive text_input_archive( ifs );
+	std::ifstream ifs( archive_name );
+	boost::archive::text_iarchive text_input_archive( ifs );
 
-		base restored_bs;
-		int a;
-		std::string str;
-		derived der;
+	base* received_bs;
+	text_input_archive >> received_bs;
 
-		text_input_archive >> restored_bs;
-		text_input_archive & a;	// for input type of archive & is equal to >>
-		text_input_archive >> str;
-		text_input_archive >> der;
-
-		restored_bs.show();
-		std::cout << "a: " << a << ", str: " << str << std::endl;
-		der.show();
-	}
-
-	return 0;
+	received_bs->show();
 }
