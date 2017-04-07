@@ -6,6 +6,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+#include <boost/serialization/base_object.hpp>
 
 const std::string archive_name( "archive.txt" );
 
@@ -17,12 +18,14 @@ public:
 	base() : i(0), d(0.0), c('a') {}
 	virtual ~base() {}
 
-	void show( void ) const
+	virtual void show( void ) const
 	{
 		std::cout << "base object: " << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
 	}
 
 private:
+
+	friend std::ostream& operator<<( std::ostream& cout, const base& bs );
 
 	/* an access class should have an access to our private method 'serialize' */
 	friend class boost::serialization::access;
@@ -30,6 +33,8 @@ private:
 	template< class Archive >
 	void serialize( Archive& ar, const unsigned int version )
 	{
+		std::cout << "serialization for base object...\n";
+
 		/* load order is equal to store order */
 		ar & i;
 		ar & d;
@@ -41,17 +46,23 @@ private:
 	char c;
 };
 
+std::ostream& operator<<( std::ostream& cout, const base& bs )
+{
+	bs.show();
+	return std::cout;
+}
+
 class derived : public base
 {
 public:
-	explicit derived( std::string&& str ) : base(3, 2.5, 'b'), str(str) {}
-	derived() {}
+	explicit derived( int num ) : base(3, 2.5, 'b'), hi(num) {}
+	derived() = default;
 
-	void show( void ) const
+	void show( void ) const override
 	{
 		std::cout << "derived object:\n ";
 		base::show();
-		std::cout << " str: " << str << std::endl;
+		std::cout << " hi: " << hi << std::endl;
 	}
 
 private:
@@ -63,10 +74,12 @@ private:
 	{
 		/* an insane way to serialize base part of derived object */
 		ar & boost::serialization::base_object<base>( *this );
-		ar & str;
+
+		std::cout << "serialization for derived object...\n";
+		ar & hi;
 	}
 
-	std::string str;
+	int hi;
 };
 
 
@@ -76,8 +89,11 @@ int main( void )
 		std::ofstream ofs( archive_name );
 		boost::archive::text_oarchive text_output_archive( ofs );
 
-		std::shared_ptr<base> bs = std::make_shared<base>( 10, 2.5, 's' );
-		bs->show();
+		/* we got to register derived class to be able to save polymorphic pointers */
+		text_output_archive.register_type( static_cast<derived*>(nullptr) );
+
+		std::shared_ptr<base> bs = std::make_shared<derived>( 26 );
+		std::cout << *bs;
 
 		text_output_archive << bs.get();
 	}
@@ -85,8 +101,13 @@ int main( void )
 	std::ifstream ifs( archive_name );
 	boost::archive::text_iarchive text_input_archive( ifs );
 
-	base* received_bs;
-	text_input_archive >> received_bs;
+	text_input_archive.register_type( static_cast<derived*>(nullptr) );
 
-	received_bs->show();
+	derived* received_obj = nullptr;
+
+	std::cout << "try to receive...\n";
+	text_input_archive >> received_obj;
+
+	std::cout << "received object:\n\n";
+	std::cout << *received_obj;
 }
