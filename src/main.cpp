@@ -1,10 +1,13 @@
 #include <iostream>
 #include <fstream>
+#include <list>
 
 #include <memory>
 
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
+
+#include <boost/serialization/list.hpp>
 
 #include <boost/serialization/base_object.hpp>
 
@@ -14,7 +17,7 @@ const std::string archive_name( "archive.txt" );
 class base
 {
 public:
-	base( int i, double d, char c ) : i(i), d(d), c(c) {}
+	base( int i, double d, char c ) : i(i), d(d), c(c) { int_list.push_back( 25 ); }
 	base() : i(0), d(0.0), c('a') {}
 	virtual ~base() {}
 
@@ -39,11 +42,14 @@ private:
 		ar & i;
 		ar & d;
 		ar & c;
+		ar & int_list;
 	}
 
 	int i;
 	double d;
 	char c;
+
+	std::list<int> int_list;
 };
 
 std::ostream& operator<<( std::ostream& cout, const base& bs )
