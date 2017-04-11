@@ -10,6 +10,7 @@
 #include <boost/serialization/list.hpp>
 
 #include <boost/serialization/base_object.hpp>
+#include <boost/serialization/version.hpp>
 
 const std::string archive_name( "archive.txt" );
 
@@ -36,7 +37,7 @@ private:
 	template< class Archive >
 	void serialize( Archive& ar, const unsigned int version )
 	{
-		std::cout << "serialization for base object...\n";
+		std::cout << "serialization for base object, version: " << version << "...\n";
 
 		/* load order is equal to store order */
 		ar & i;
@@ -61,14 +62,14 @@ std::ostream& operator<<( std::ostream& cout, const base& bs )
 class derived : public base
 {
 public:
-	explicit derived( int num ) : base(3, 2.5, 'b'), hi(num) {}
+	explicit derived( int num ) : base(3, 2.5, 'b'), hi(num), dd(8) {}
 	derived() = default;
 
 	void show( void ) const override
 	{
 		std::cout << "derived object:\n ";
 		base::show();
-		std::cout << " hi: " << hi << std::endl;
+		std::cout << " hi: " << hi << ", dd: " << dd << std::endl;
 	}
 
 private:
@@ -81,33 +82,27 @@ private:
 		/* an insane way to serialize base part of derived object */
 		ar & boost::serialization::base_object<base>( *this );
 
-		std::cout << "serialization for derived object...\n";
+		std::cout << "serialization for derived object, version: " << version << "...\n";
 		ar & hi;
+
+		if( version == 1 )
+			ar & dd;
 	}
 
+	/* added for 0-th version */
 	int hi;
+
+	/* added for 1-st version */
+	double dd;
 };
+
+BOOST_CLASS_VERSION( derived, 1 );
 
 
 int main( void )
 {
-	{
-		std::ofstream ofs( archive_name );
-		boost::archive::text_oarchive text_output_archive( ofs );
-
-		/* we got to register derived class to be able to save polymorphic pointers */
-		text_output_archive.register_type( static_cast<derived*>(nullptr) );
-
-		std::shared_ptr<base> bs = std::make_shared<derived>( 26 );
-		std::cout << *bs;
-
-		text_output_archive << bs.get();
-	}
-
 	std::ifstream ifs( archive_name );
 	boost::archive::text_iarchive text_input_archive( ifs );
-
-	text_input_archive.register_type( static_cast<derived*>(nullptr) );
 
 	derived* received_obj = nullptr;
 
