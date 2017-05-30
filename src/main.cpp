@@ -1,12 +1,7 @@
 #include <iostream>
-#include <fstream>
 #include <streambuf>
-#include <sstream>
 
 #include <list>
-
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -17,8 +12,9 @@
 #include <boost/serialization/version.hpp>
 #include <boost/serialization/split_member.hpp>
 
-
-const std::string archive_name( "archive.txt" );
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 class base
 {
@@ -26,7 +22,6 @@ public:
 	base( int i, double d, char c ) : i(i), d(d), c(c)
     {
 		int_list.push_back( 25 ); /* int_list is default-initialized */
-		std::cout << "this ptr(base ctor): " << static_cast<void*>(this) << std::endl;
     }
 
 	base() : i(0), d(0.0), c('a') {} /* int_list is default-initialized */
@@ -37,16 +32,12 @@ public:
 	base& operator=( const base& ref ) = default;
 	base& operator=( base&& ref ) = delete;
 
-	virtual ~base() { std::cout << "I'm base dtor.\n"; }
+	virtual ~base() {}
 
 	virtual void show( std::ostream& cout = std::cout ) const
 	{
-		cout << "this ptr(base show): " << static_cast<void*>(const_cast<base*>(this)) << std::endl;
-		this->kk( cout );
-		cout << "base object: " << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
+		cout << " base object: " << "i: " << i << ", d: " << d << ", c: " << c << std::endl;
 	}
-
-	virtual void kk( std::ostream& cout = std::cout ) const { cout << "I'm base.\n"; }
 
 private:
 
@@ -58,8 +49,6 @@ private:
 	template< class Archive >
 	void serialize( Archive& ar, const unsigned int version )
 	{
-		std::cout << "serialization for base object, version: " << version << "...\n";
-
 		/* load order is equal to store order */
 		ar & i;
 		ar & d;
@@ -80,18 +69,10 @@ std::ostream& operator<<( std::ostream& cout, const base& bs )
 	return cout;
 }
 
-std::ostream& operator<<( std::ostream& cout, const base *bs )
-{
-	return cout << *bs;
-}
-
 class derived : public base
 {
 public:
-	explicit derived( int num ) : base(3, 2.5, 'b'), hi(num), dd(8)
-	{
-		std::cout << "this ptr(derived ctor): " << static_cast<void*>(this) << std::endl;
-	}
+	explicit derived( int num ) : base(3, 2.5, 'b'), hi(num), dd(8)	{}
 
 	derived() = default;
 
@@ -101,18 +82,12 @@ public:
 	derived& operator=( const derived& ref ) = default;
 	derived& operator=( derived&& ref ) = delete;
 
-	~derived() { std::cout << "I'm derived dtor.\n"; }
-
 	void show( std::ostream& cout = std::cout) const override
 	{
-		cout << "this ptr(derived show): " << static_cast<void*>(const_cast<derived*>(this)) << std::endl;
-
-		cout << "derived object:\n ";
+		cout << " derived object:\n ";
 		base::show( cout );
-		cout << " hi: " << hi << ", dd: " << dd << std::endl;
+		cout << "  hi: " << hi << ", dd: " << dd << std::endl;
 	}
-
-	void kk( std::ostream& cout = std::cout ) const override { cout << "I'm derived.\n"; }
 
 private:
 
@@ -121,12 +96,8 @@ private:
 	template< class Archive >
 	void save( Archive& ar, const unsigned int version ) const
 	{
-		std::cout << "save for derived\n";
-
 		/* an insane way to serialize base part of derived object */
 		ar & boost::serialization::base_object<base>(*this);
-
-		std::cout << "store for derived object, version: " << version << "...\n";
 
 		ar & hi;
 
@@ -139,7 +110,6 @@ private:
 	{
 		ar & boost::serialization::base_object<base>( *this );
 
-		std::cout << "load for derived object, version: " << version << "...\n";
 		ar & hi;
 
 		/* we got to check as we're loading object from archive (to support old archives) */
@@ -235,99 +205,85 @@ raw_memory_stream_buff::int_type raw_memory_stream_buff::overflow( int_type ch )
 
 int main( void )
 {
-	std::stringstream string_stream;
+	pid_t child_pid;
+	int sockets[2];
+	int ret;
 
-	std::basic_stringbuf<char> string_buf( std::ios_base::out | std::ios_base::in );
-
-	raw_memory_stream_buff raw_stream_buf;
-
+	/* create stream-based connected sockets pair in PF_LOCAL domain */
+	ret = socketpair( AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets );
+	if( ret < 0 )
 	{
+		std::cout << "an attempt to create socketpair failed.\n";
+		return 1;
+	}
+
+	child_pid = fork();
+	if( child_pid < 0 )
+	{
+		std::cout << "an attempt to fork() failed.\n";
+		for( int fd : sockets )
+			close( fd );
+
+		return 1;
+	}
+
+	/* after fork child process has sockets[2] fds which refer to the same socket objects,
+	 * as parent refers to */
+
+	/* parent process */
+	if( child_pid )
+	{
+		raw_memory_stream_buff raw_stream_buf;
+		boost::archive::binary_oarchive raw_ar( raw_stream_buf );
+
 		std::shared_ptr<base> bs = std::make_shared<derived>( 26 );
-		std::cout << bs;
+		std::cout << "object to transfer:\n" << *bs;
 
 		std::cout << "--------serialization start---------\n";
-		std::cout << "-----------std::ofstream------------\n";
-
-		std::ofstream ofs( archive_name );
-		boost::archive::text_oarchive ofs_ar( ofs );
 
 		/* we got to register derived class to be able to save polymorphic pointers */
 		/* TODO: we have another way to do this, but now I don't wanna spent time to figure out
 		 *       how to do that */
-		ofs_ar.register_type( static_cast<derived*>(nullptr) );
-		ofs_ar << bs.get();
-
-		std::cout << "---------std::stringstream----------\n";
-
-		boost::archive::binary_oarchive string_stream_ar( string_stream );
-
-		string_stream_ar.register_type( static_cast<derived*>(nullptr) );
-		string_stream_ar << bs.get();
-
-		std::cout << "----std::basic_stringbuf<char>------\n";
-
-		boost::archive::binary_oarchive strbuf_ar( string_buf );
-
-		strbuf_ar.register_type( static_cast<derived*>(nullptr) );
-		strbuf_ar << bs.get();
-
-		std::cout << "------raw_memory_stream_buff--------\n";
-
-		boost::archive::binary_oarchive raw_ar( raw_stream_buf );
-
 		raw_ar.register_type( static_cast<derived*>(nullptr) );
 		raw_ar << bs.get();
 
 		std::cout << "-------serialization finish---------\n";
+
+		const std::vector<char>& sered_obj = raw_stream_buf.upload_ref();
+
+		ret = send( sockets[0], &sered_obj.front(), sered_obj.size(), 0 );
+		if( ret < 0 )
+		{
+			std::cout << "an attempt to send() failed.\n";
+			return 1;
+		}
+
+		usleep( 20000 );
 	}
+	else
+	{
+		char data[4096];
+		int size;
 
-	derived* received_obj = nullptr;
+		size = recv( sockets[1], data, sizeof(data), 0 );
+		if( size < 0 )
+		{
+			std::cout << "an attempt to recv() failed.\n";
+			return 1;
+		}
 
-	std::cout << "\n--------deserialization start-----------\n";
-	std::cout << "-----------std::ofstream----------------\n";
+		raw_memory_stream_buff raw_stream_buf( std::vector<char>( &data[0], &data[size] ) );
+		boost::archive::binary_iarchive raw_ar( raw_stream_buf );
 
-	std::ifstream ifs( archive_name );
-	boost::archive::text_iarchive ifs_ar( ifs );
+		derived* received_obj = nullptr;
 
-	ifs_ar >> received_obj;
-	std::cout << "received object:\n\n";
-	std::cout << *received_obj;
+		std::cout << "\n--------deserialization start-----------\n";
 
-	received_obj->~base();
-	received_obj = nullptr;
+		raw_ar >> received_obj;
 
-	std::cout << "-----------std::stringstream------------\n";
+		std::cout << "---------deserialization finish---------\n";
 
-	boost::archive::binary_iarchive string_stream_ar( string_stream );
-
-	string_stream_ar >> received_obj;
-	std::cout << "received object:\n\n";
-	std::cout << *received_obj;
-
-	received_obj->~base();
-	received_obj = nullptr;
-
-	std::cout << "-------std::basic_stringbuf<char>-------\n";
-
-	boost::archive::binary_iarchive strbuf_ar( string_buf );
-
-	strbuf_ar >> received_obj;
-	std::cout << "received object:\n\n";
-	std::cout << *received_obj;
-
-	received_obj->~base();
-	received_obj = nullptr;
-
-	std::cout << "--------raw_memory_stream_buff----------\n";
-
-	boost::archive::binary_iarchive raw_ar( raw_stream_buf );
-
-	raw_ar >> received_obj;
-	std::cout << "received object:\n\n";
-	std::cout << *received_obj;
-
-	received_obj->~base();
-	received_obj = nullptr;
-
-	std::cout << "---------deserialization finish---------\n";
+		std::cout << "received object:\n";
+		std::cout << *received_obj;
+	}
 }
