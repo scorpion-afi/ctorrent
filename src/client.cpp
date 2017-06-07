@@ -9,22 +9,23 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+#include <netinet/ip.h>
 
 
-const std::string socket_name = "my_socket";
+const uint32_t host_ip = 0x7f000001;	/* 127.0.0.1 (loopback) in host byte order (little endian) */
+const uint16_t port_number = 4096 + 1;	/* why this one, why not? */
 
 
 void client( void )
 {
-	sockaddr_un server_addr;
+	sockaddr_in server_addr;
 	int cl_socket;
 	int ret;
 
-	std::string request = "If you know Why it doesn't matter How.";
+	std::string request = "\"If you know Why it doesn't matter How.\"";
 	std::vector<char> reply( 4096 );
 
-	cl_socket = socket( AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+	cl_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
 	if( cl_socket < 0 )
 	{
 		int err = errno;
@@ -37,9 +38,9 @@ void client( void )
 
 	std::memset( &server_addr, 0, sizeof(server_addr) );
 
-	server_addr.sun_family = AF_UNIX;
-	std::memcpy( server_addr.sun_path, socket_name.c_str(),
-			std::min(socket_name.size() + 1, sizeof(server_addr.sun_path)) );
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = htonl( host_ip );
+	server_addr.sin_port = htons( port_number );
 
 	/* try to connect socket to the remote socket address,
 	 * send a connection request for remote socket which listens for connection requests */
@@ -56,7 +57,7 @@ void client( void )
 		return;
 	}
 
-	sockaddr_un cl_socket_addr;
+	sockaddr_in cl_socket_addr;
 	socklen_t addr_len = sizeof(cl_socket_addr);
 
 	std::memset( &cl_socket_addr, 0, sizeof(cl_socket_addr) );
@@ -65,8 +66,9 @@ void client( void )
 	if( addr_len > sizeof(cl_socket_addr) )
 		std::cout << "[client] [warning] a peer socket address has been truncated.\n";
 	else
-		std::cout << "[client] connection to the server has been established (peer name: "
-		    << cl_socket_addr.sun_path << "), send request..." << std::flush;
+		std::cout << "[client] connection to the server has been established (server address: 0x"
+		    << std::hex << ntohl( cl_socket_addr.sin_addr.s_addr ) << std::dec << ":"
+			<< ntohs( cl_socket_addr.sin_port ) <<	"), send request..." << std::flush;
 
 	ret = send( cl_socket, request.c_str(), request.size() + 1, MSG_NOSIGNAL );
 	if( ret < 0 )
@@ -96,7 +98,7 @@ void client( void )
 		return;
 	}
 
-	std::cout << " success.\n" "[client] a received request: (size: " << ret << ")\n ";
+	std::cout << " success.\n" "[client] a received reply: (size: " << ret << ")\n ";
 
 	for( char ch : reply )
 	 std::cout << ch;

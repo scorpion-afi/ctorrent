@@ -9,27 +9,28 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+#include <netinet/ip.h>	/* IPv4 */
 
 
-const std::string socket_name = "my_socket";
+const uint32_t host_ip = 0x7f000001;	/* 127.0.0.1 (loopback) in host byte order (little endian) */
+const uint16_t port_number = 4096 + 1;	/* why this one, why not? */
 
 
 void server( void )
 {
-	sockaddr_un s_addr;
+	sockaddr_in s_addr;
 	int listen_socket = -1;
 	int ret;
 
-	sockaddr_un peer_addr;
+	sockaddr_in peer_addr;
 	socklen_t addr_len;
 	int peer_socket = -1;
 
 	std::vector<char> request_data(4096);
 	int ret_size;
 
-	/* create a stream-based, reliable, bidirectional socket within AF_UNIX protocols family */
-	listen_socket = socket( AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+	/* create a stream-based, reliable, bidirectional socket within AF_INET protocols family */
+	listen_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
 	if( listen_socket < 0 )
 	{
 		int err = errno;
@@ -42,9 +43,9 @@ void server( void )
 
 	std::memset( &s_addr, 0, sizeof(s_addr) );
 
-	s_addr.sun_family = AF_UNIX;
-	std::memcpy( s_addr.sun_path, socket_name.c_str(),
-			std::min(socket_name.size() + 1, sizeof(s_addr.sun_path)) );	/* string is char array */
+	s_addr.sin_family = AF_INET;
+	s_addr.sin_addr.s_addr = htonl( host_ip );
+	s_addr.sin_port = htons( port_number );
 
 	/* bind socket to some local socket address */
 	ret = bind( listen_socket, reinterpret_cast<sockaddr*>(&s_addr), sizeof(s_addr) );
@@ -60,7 +61,8 @@ void server( void )
 		return;
 	}
 
-	std::cout << "[server] the socket has been bound to the local socket address.\n";
+	std::cout << "[server] the socket has been bound to the local socket address (0x" << std::hex
+			<< host_ip << std::dec << ":" << port_number << ").\n";
 
 	/* mark socket as a passive socket so it can be used to accept incoming connection requests, via accept()
 	 * socket is still bound to socket address I specified above */
@@ -75,10 +77,11 @@ void server( void )
 		goto finish;
 	}
 
+	std::cout << "[server] the socket has been marked as passive (listening) socket.\n";
+	std::cout << "[server] wait for incoming connection requests..." << std::flush;
+
 	addr_len = sizeof(peer_addr);
 	std::memset( &peer_addr, 0, sizeof(peer_addr) );
-
-	std::cout << "[server] wait for incoming connection requests..." << std::flush;
 
 	/* accept incoming connection request from listen_socket's queue of pending connection requests
 	 * return accepted socket that is in connected (to the remote peer) state */
@@ -96,7 +99,9 @@ void server( void )
 	if( addr_len > sizeof(peer_addr) )
 		std::cout << "[server] [warning] a peer socket address has been truncated.\n";
 
-	std::cout << " success.\n" "[server] a new connection has been accepted, wait for request..." << std::flush;
+	std::cout << " success.\n" "[server] a new connection has been accepted (client address: 0x"
+			<< std::hex << ntohl( peer_addr.sin_addr.s_addr ) << std::dec << ":"
+			<< ntohs( peer_addr.sin_port ) << "), wait for request..." << std::flush;
 
 	/* try to get up to request_data.size() bytes from the socket */
 	ret_size = recv( peer_socket, &request_data.front(), request_data.size(), 0 );
@@ -119,7 +124,7 @@ void server( void )
 	std::cout << "[server] send a reply..." << std::flush;
 
 	/* send data to the socket (this socket is connected to the remote socket) */
-	ret_size = send( peer_socket, "A.K., Moscow.", sizeof("A.K., Moscow."), MSG_NOSIGNAL );
+	ret_size = send( peer_socket, "\"A.K., Moscow.\"", sizeof("\"A.K., Moscow.\""), MSG_NOSIGNAL );
 	if( ret_size < 0 )
 	{
 		int err = errno;
@@ -136,7 +141,6 @@ void server( void )
 finish:
 	close( peer_socket );
 	close( listen_socket );
-	unlink( socket_name.c_str() );
 }
 
 int main( void )
