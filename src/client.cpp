@@ -1,3 +1,6 @@
+
+#include <config.h>
+
 #include <iostream>
 #include <array>
 #include <string>
@@ -7,6 +10,7 @@
 
 #include <unistd.h>
 
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
@@ -25,7 +29,11 @@ void client( void )
 	std::string request = "\"If you know Why it doesn't matter How.\"";
 	std::vector<char> reply( 4096 );
 
+#ifdef ANDROID_BUILD
+	cl_socket = socket( AF_INET, SOCK_STREAM, 0 );
+#else
 	cl_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+#endif
 	if( cl_socket < 0 )
 	{
 		int err = errno;

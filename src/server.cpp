@@ -1,3 +1,6 @@
+
+#include <config.h>
+
 #include <iostream>
 #include <array>
 #include <string>
@@ -7,6 +10,7 @@
 
 #include <unistd.h>
 
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>	/* IPv4 */
@@ -30,7 +34,11 @@ void server( void )
 	int ret_size;
 
 	/* create a stream-based, reliable, bidirectional socket within AF_INET protocols family */
+#ifdef ANDROID_BUILD
+	listen_socket = socket( AF_INET, SOCK_STREAM, 0 );
+#else
 	listen_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+#endif
 	if( listen_socket < 0 )
 	{
 		int err = errno;
@@ -85,7 +93,11 @@ void server( void )
 
 	/* accept incoming connection request from listen_socket's queue of pending connection requests
 	 * return accepted socket that is in connected (to the remote peer) state */
+#ifdef ANDROID_BUILD
+	peer_socket = accept( listen_socket, reinterpret_cast<sockaddr*>(&peer_addr), &addr_len );
+#else
 	peer_socket = accept4( listen_socket, reinterpret_cast<sockaddr*>(&peer_addr), &addr_len, SOCK_CLOEXEC );
+#endif
 	if( peer_socket < 0 )
 	{
 		int err = errno;
