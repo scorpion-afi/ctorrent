@@ -1,0 +1,33 @@
+
+All commands are executed from current directory.
+
+1. Download CrystaX package (*-linux-x86_64.tar.xz)
+ (improved Android NDK with support for full C++ features, C++ STL and boost, gcc-5...)
+ https://www.crystax.net/en/download
+
+2. Untar this archive:
+ $ tar -xvf *-linux-x86_64.tar.xz
+
+3. Extract standalone toolchain:
+ $ crystax-ndk-<your version>/build/tools/make-standalone-toolchain.sh \
+   --arch=arm \
+   --platform=android-21 \
+   --install-dir=./arm-linux-androideabi \
+   --toolchain=arm-linux-androideabi-5
+   
+ I use 21 API 'cause I have CyanogenMod 12.1 (Android 5.1.1).
+
+4. Extract boost prebuilt libraries: 
+  $ cp -r crystax-ndk-<your version>/sources/boost ./boost
+  $ rm -rf boost/<boost_version>/libs/arm64-v8a \
+           boost/<boost_version>/libs/armeabi \
+           boost/<boost_version>/libs/armeabi-v7a \
+           boost/<boost_version>/libs/mips \
+           boost/<boost_version>/libs/mips64 \
+           boost/<boost_version>/libs/x86 \
+           boost/<boost_version>/libs/x86_64
+           
+5. Create a docker image:
+  $ sudo docker run -t arm-android .
+
+6. Remove all generated files (the docker image was saved by docker...).

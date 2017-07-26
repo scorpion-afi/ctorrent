@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <boost/log/trivial.hpp>
+
 
 int main( void )
 {
@@ -20,6 +22,8 @@ int main( void )
 	std::cout << "I'm process with pid: " << getpid() << std::endl;
 	std::cout << "invoke daemon...\n";
 
+	BOOST_LOG_TRIVIAL( debug ) << "wassup cruel world.";
+	
 	/* make fork syscall and terminate parent process inside */
 	res = daemon( 0, 0 );
 	if( res < 0 )

@@ -1,0 +1,10 @@
+prefix=/home/dev
+exec_prefix=${prefix}
+libdir=${prefix}/boost/1.59.0/libs/armeabi-v7a-hard/gnu-5
+includedir=${prefix}/boost/1.59.0/include
+
+Name: boost-crystax-log-arm
+Description: boost logging libraries for android arm
+Version: 1.59.0
+Libs: -L${libdir} -lboost_log -lboost_filesystem -lboost_system
+Cflags: -I${includedir} -DBOOST_LOG_DYN_LINK

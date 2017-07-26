@@ -1,22 +1,23 @@
 #!/bin/bash
 
 # this script deploys bulding processes within different
-# containers to build for different targets (OS, architectures)
+# containers to build for different targets (architectures, OS)
 
-# Note: containers have to set up at least the next environment variable:
-#       CROSS_TRIPLE  - cross triple (e.g. arm-linux-androideabi)
-#       CMAKE_TOOLCHAIN_FILE - toolchain file for cross-compilation with cmake
+# Note: containers have to set up at least the next environment variables:
+#       TARGET_NAME  - name of a target (e.g. arm-android)
+#       CMAKE_TOOLCHAIN_FILE - a toolchain file for cross-compilation with cmake
 
-containers="thewtex/cross-compiler-linux-x64
-            thewtex/cross-compiler-android-arm"
+
+containers="arm-android"
+#           x86_64-linux"
 
 mkdir -p build
 
 for container_name in ${containers}; do
   sudo docker run --rm \
-   -v ${PWD}:/project:ro \
-   -v ${PWD}/build:/build:rw \
-   -w /build \
+   -v ${PWD}:/home/dev/project:ro \
+   -v ${PWD}/build:/home/dev/build:rw \
+   -w /home/dev/build \
    ${container_name} \
-   bash /project/build_target.sh
+   bash /home/dev/project/build_target.sh
 done
