@@ -1,0 +1,8 @@
+
+All commands are executed within current directory.
+
+1. Download boost sources (1.59.0), as a tar.gz, and save them in current directory.
+          
+2. Create a docker image:
+  $ sudo docker build -t x86_64-linux .
+

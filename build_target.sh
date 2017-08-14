@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # this script is supposed to be called from CONTAINER !!!
-# do NOT call it directly from host !!!
+# do NOT call it directly from the host !!!
 
 # Note: containers have to set up at least the next environment variables:
 #       TARGET_NAME  - name of a target (e.g. arm-android)
-#       CMAKE_TOOLCHAIN_FILE - a toolchain file for cross-compilation with cmake
+#       CMAKE_TOOLCHAIN_FILE - a toolchain file for cross-compilation with cmake,
+#                              if any cross-compilation is supposed
 
 
 if [ x${TARGET_NAME} == x ]; then

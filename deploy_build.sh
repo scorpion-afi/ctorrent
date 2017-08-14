@@ -5,11 +5,14 @@
 
 # Note: containers have to set up at least the next environment variables:
 #       TARGET_NAME  - name of a target (e.g. arm-android)
-#       CMAKE_TOOLCHAIN_FILE - a toolchain file for cross-compilation with cmake
+#       CMAKE_TOOLCHAIN_FILE - a toolchain file for cross-compilation with cmake,
+#                              if any cross-compilation is supposed
 
+# be aware 'arm-android' and 'x86_64-linux' images use the different version of
+# compilers and boost libraries are built with difference options !!!
 
-containers="arm-android"
-#           x86_64-linux"
+containers="arm-android
+            x86_64-linux"
 
 mkdir -p build
 

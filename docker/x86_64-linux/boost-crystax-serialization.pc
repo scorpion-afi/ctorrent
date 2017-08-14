@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+includedir=${prefix}/include/
+
+Name: boost-crystax-serialization
+Description: boost serialization libraries for x86_64 linux
+Version: 1.59.0
+Libs: -L${libdir} -lboost_serialization
+Cflags: -I${includedir}

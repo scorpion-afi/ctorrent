@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+includedir=${prefix}/include/
+
+Name: boost-crystax-log
+Description: boost logging libraries for x86_64 linux
+Version: 1.59.0
+Libs: -L${libdir} -lboost_log -lboost_filesystem -lboost_system -pthread
+Cflags: -I${includedir} -DBOOST_LOG_DYN_LINK
