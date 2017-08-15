@@ -2,7 +2,7 @@
 set( xdu_name "xdu" )
 set( xdu_src "xdu/main.cpp" )
 
-pkg_check_modules( boost REQUIRED boost-crystax-log )
+pkg_check_modules( boost REQUIRED boost-log )
 
 add_executable( ${xdu_name} ${xdu_src} )
 

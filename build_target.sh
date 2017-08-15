@@ -36,7 +36,8 @@ echo ""
 #
 # /home/dev/project/src - is where CMakeLists.txt placed.
 cmake -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE /home/dev/project/src
-make VERBOSE=1
+#make VERBOSE=1
+make
 make DESTDIR=${install_dir} install
 
 if [ $? == 0 ]; then

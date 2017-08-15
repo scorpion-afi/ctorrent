@@ -3,8 +3,8 @@ exec_prefix=${prefix}
 libdir=${prefix}/boost/1.59.0/libs/armeabi-v7a-hard/gnu-5
 includedir=${prefix}/boost/1.59.0/include
 
-Name: boost-crystax-serialization-arm
-Description: boost serialization libraries for android arm
+Name: boost-crystax-serialization
+Description: boost serialization libraries for android arm (crystax)
 Version: 1.59.0
 Libs: -L${libdir} -lboost_serialization
 Cflags: -I${includedir}

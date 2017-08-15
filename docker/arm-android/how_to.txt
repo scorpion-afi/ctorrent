@@ -1,5 +1,5 @@
 
-All commands are executed from current directory.
+All commands are executed within current directory.
 
 1. Download CrystaX package (*-linux-x86_64.tar.xz)
  (improved Android NDK with support for full C++ features, C++ STL and boost, gcc-5...)
