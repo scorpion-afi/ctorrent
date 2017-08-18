@@ -1,0 +1,16 @@
+# this is cmd file for arm-gdb launched on the host
+
+# gdb-server on a target listens on 5039 port
+target remote :5039
+
+set sysroot sysroot/
+
+# gdb doesn't find boost libraries withing sysroot...
+set solib-search-path sysroot/system/lib
+
+# binaries are built inside docker container where
+# source directory 'src' was under the '/home/dev/project' path.
+set substitute-path /home/dev/project ../../
+
+b main
+c

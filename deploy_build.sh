@@ -9,7 +9,9 @@
 #                              if any cross-compilation is supposed
 
 # be aware 'arm-android' and 'x86_64-linux' images use the different version of
-# compilers and boost libraries are built with difference options !!!
+# compilers, and boost libraries are built with difference options !!!
+
+# do NOT call this script with root or root-like (sudo) privileges.
 
 containers="arm-android
             x86_64-linux"

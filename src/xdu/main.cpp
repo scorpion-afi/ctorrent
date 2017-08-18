@@ -2,41 +2,49 @@
 #include <config.h>
 
 #include <iostream>
-#include <array>
-#include <fstream>
 
-#include <cstring>
-#include <unistd.h>
-#include <errno.h>
-
+#include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
 
+#include <boost/log/sinks.hpp>
+#include <boost/log/sinks/sink.hpp>
+#include <boost/log/sinks/syslog_backend.hpp>
+
+namespace logging = boost::log;
+namespace sinks = logging::sinks;
+
+// Complete sink type
+typedef sinks::synchronous_sink< sinks::syslog_backend > sink_t;
+
+void init_native_syslog()
+{
+    boost::shared_ptr< logging::core > core = logging::core::get();
+
+    // Create a backend
+    boost::shared_ptr< logging::sinks::syslog_backend > backend(new sinks::syslog_backend(
+    		logging::keywords::facility = logging::sinks::syslog::user,
+			logging::keywords::use_impl = logging::sinks::syslog::udp_socket_based
+    ));
+
+    // Set the straightforward level translator for the "Severity" attribute of type int
+    backend->set_severity_mapper(sinks::syslog::direct_severity_mapping< int >("Severity"));
+
+    // Wrap it into the frontend and register in the core.
+    // The backend requires synchronization in the frontend.
+    core->add_sink(boost::make_shared< sink_t >(backend));
+    
+    core->set_filter
+    (
+        logging::trivial::severity >= logging::trivial::info
+    );
+}
 
 int main( void )
 {
-	std::ofstream file( "/home/sergs/xdu.log" );
-	int res;
+	std::cout << "wassup!\n";
 
-	std::cout.rdbuf( file.rdbuf() );
-
-	std::cout << "I'm process with pid: " << getpid() << std::endl;
-	std::cout << "invoke daemon...\n";
-
-	BOOST_LOG_TRIVIAL( debug ) << "wassup cruel world.";
+	init_native_syslog();
 	
-	/* make fork syscall and terminate parent process inside */
-	res = daemon( 0, 0 );
-	if( res < 0 )
-	{
-		int err = errno;
-		std::array<char, 256> buf;
-
-		std::cout << "[server] [error] socket(): " <<
-				strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-		return 1;
-	}
-
-	/* we're in a background process, gratz */
-
-	std::cout << "I'm process with pid: " << getpid() << std::endl;
+	BOOST_LOG_TRIVIAL( info )  << "lemme know when u get ready.";
 }
