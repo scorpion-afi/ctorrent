@@ -11,4 +11,5 @@ sudo docker run \
 --rm -it \
 -v ${root_dir}:/home/dev/project:ro \
 -w /home/dev/ \
+--env-file env.file \
 x86_64-linux-root

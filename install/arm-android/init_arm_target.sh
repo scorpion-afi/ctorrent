@@ -25,3 +25,10 @@ adb shell rm -f /boost.tar.gz
 
 # for debug purposes
 adb forward tcp:5039 tcp:5039
+
+
+# TODO: what's about changing of env variables?
+
+#while read -r line; do
+#  adb shell "echo \"export ${line}\" >> /etc/mkshrc"
+#done < ./env.file
