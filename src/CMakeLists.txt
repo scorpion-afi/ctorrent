@@ -13,6 +13,6 @@ configure_file( ${PROJECT_SOURCE_DIR}/config.h.in ${PROJECT_BINARY_DIR}/config.h
 # every target has to be notified about where config.h file is
 include_directories( ${PROJECT_BINARY_DIR} )
 
-#include( ctorrent/CMakeLists.txt )
+include( ctorrent/CMakeLists.txt )
 include( xdu/CMakeLists.txt )
-#include( manager_app/CMakeLists.txt )
+include( task_solver/CMakeLists.txt )
