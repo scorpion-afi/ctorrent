@@ -13,8 +13,8 @@
 
 # do NOT call this script with root or root-like (sudo) privileges.
 
-containers="arm-android
-            x86_64-linux"
+containers="x86_64-linux
+            arm-android"
 
 mkdir -p build
 

@@ -9,30 +9,37 @@
 
 #include <iostream>
 #include <string>
+#include <exception>
 
 #include "hash_calculator.h"
 #include "log.h"
 
 int main( void )
 {
-	hash_calculator hash_calculator;
   std::string str;
 
 	init_boost_log();
 
-	str = "that it's over for a while.";
+	std::getline( std::cin, str );
 
-  BOOST_LOG_TRIVIAL( info ) << "get started to calculate a hash for the string...";
+  BOOST_LOG_TRIVIAL( info ) << "\nget started to calculate a hash for the string...";
 
   try
   {
-    std::cout << "hash for the: \"" << str << "\": " << hash_calculator.get_hash( str ) << std::endl;
+    hash_calculator hash_calculator;
+    BOOST_LOG_TRIVIAL( info ) << " hash for the: \"" << str << "\": " << hash_calculator.get_hash( str ) << std::endl;
   }
-  catch ( const char* err )
+  catch( const std::string &err )
   {
-    std::cout << err << std::endl;
+    BOOST_LOG_TRIVIAL( info ) << err << std::endl;
     return -1;
   }
-
-  BOOST_LOG_TRIVIAL( info ) << "the has got calculated.";
+  catch( const std::exception &exception )
+  {
+    BOOST_LOG_TRIVIAL( info ) << exception.what() << std::endl;
+  }
+  catch(...)
+  {
+    BOOST_LOG_TRIVIAL( info ) << "some exception has been caught.\n";
+  }
 }

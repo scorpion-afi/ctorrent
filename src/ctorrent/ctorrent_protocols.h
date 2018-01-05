@@ -11,19 +11,6 @@
 #include <string>
 #include <type_traits>
 
-/* interface class to inherit from to provide the class which can be
- * used to pass user-data to a calc_chunk class */
-class i_chunk_data
-{
-public:
-
-  i_chunk_data() = default;
-  virtual ~i_chunk_data() {}
-
-  virtual const void* get_raw_data() const = 0;
-  virtual std::size_t get_raw_data_size() const = 0;
-};
-
 /* no copy semantic */
 struct calc_result
 {
@@ -56,6 +43,19 @@ struct calc_result
   std::size_t data_size;
 };
 
+/* interface class to inherit from to provide the class which can be
+ * used to pass user-data to a calc_chunk class */
+class i_chunk_data
+{
+public:
+
+  i_chunk_data() = default;
+  virtual ~i_chunk_data() {}
+
+  virtual const void* get_raw_data() const = 0;
+  virtual std::size_t get_raw_data_size() const = 0;
+};
+
 /* no copy semantic */
 class calc_chunk
 {
@@ -75,15 +75,15 @@ public:
   void grab_data( const i_chunk_data &data );
   void set_method_src( std::string method_src );
 
-  calc_result evaluate();
+  calc_result compute();
 
-  /* this function can be used to check a 'data' type;
+  /* this function can be used to check a 'm_data' type;
    * calc_chunk is intended to be passed over sockets by using boost.serialization library,
-   * so 'data' got set by 'set_data' is going to be passed too, but host side knows nothing
-   * about the type of 'data' so to make this class universal the type of 'data' has to be
-   * POD type (C-like structure) so 'data' can be passed like a chunk of memory */
+   * so 'm_data' got set by 'grab_data' is going to be passed too, but host side knows nothing
+   * about the type of 'm_data' so to make this class universal the type of 'm_data' has to be
+   * POD type (C-like structure) so 'm_data' can be passed like a chunk of memory */
   template< class T >
-  static constexpr bool check_type() { return std::is_pod<T>::value ? true : throw("bad type"); }
+  static constexpr bool check_type() { return std::is_pod<T>::value ? true : throw std::string( "bad type" ); }
 
   /* for debug purposes */
   std::string get_info() const;
@@ -93,7 +93,9 @@ private:
   char* m_data;
   std::size_t m_data_size;
 
-  /* calc_result evaluate( void *data ); */
+  /* extern "C" calc_result compute( const void *data );
+   *
+   * Note: the function has to be declared with C linkage to allow being found by libdl */
   std::string m_method_src;
 };
 

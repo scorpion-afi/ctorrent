@@ -21,6 +21,8 @@ endif( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
 
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
     install( TARGETS ${task_solver_name} DESTINATION /system/bin )
+    #install( FILES task_solver/task.cpp DESTINATION /usr/local/share/task_solver )
 elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
     install( TARGETS ${task_solver_name} DESTINATION /usr/local/bin )
+    install( FILES task_solver/task.cpp DESTINATION /usr/local/share/task_solver )
 endif( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )

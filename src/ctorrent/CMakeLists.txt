@@ -8,7 +8,7 @@ add_library( ${ctorrent} SHARED ${ctorrent_src} )
 
 target_compile_options( ${ctorrent} PUBLIC -std=c++11 -Wall -g3 -O0 -Wno-deprecated-declarations
                         ${boost_CFLAGS} )
-target_link_libraries( ${ctorrent} ${boost_LDFLAGS} )
+target_link_libraries( ${ctorrent} ${boost_LDFLAGS} -ldl )
 
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
     set_property( TARGET ${ctorrent} APPEND_STRING PROPERTY COMPILE_OPTIONS "-fPIE" )
@@ -19,6 +19,9 @@ endif( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
 
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
     install( TARGETS ${ctorrent} DESTINATION /system/lib )
+    #install( FILES ctorrent/ctorrent_protocols.h DESTINATION /usr/local/include )
 elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
     install( TARGETS ${ctorrent} DESTINATION /usr/local/lib )
+    install( FILES ctorrent/ctorrent_protocols.h DESTINATION /usr/local/include )
 endif( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
+

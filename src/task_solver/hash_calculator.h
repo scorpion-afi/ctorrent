@@ -27,7 +27,7 @@ private:
   const std::size_t m_chunk_size = 4;
   const std::size_t base = 53;  /* the hash base for the Latin alphabet */
 
-  static const std::string method;
+  std::string method;
 };
 
 #endif /* HASH_CALCULATOR_H_ */

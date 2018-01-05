@@ -7,9 +7,11 @@
 
 #include "config.h"
 
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <cstring>
+#include <sstream>
 
 #include <boost/log/trivial.hpp>
 
@@ -87,40 +89,20 @@ void hash_data_impl::set_data( const char *str, std::size_t str_size, std::size_
   std::memcpy( raw_data + data->str_offset, str, data->str_size );
 }
 
-
-const std::string hash_calculator::method =
-    "#include <cmath>                                                 \n"
-    "#include <vector>                                                \n"
-    "#include <cstdint>                                               \n"
-    "                                                                 \n"
-    "calc_result evaluate( void *data )                               \n"
-    "{                                                                \n"
-    "  hash_data *hash_data = static_cast<hash_data*>( data );        \n"
-    "  std::vector<uint64_t> coefs( hash_data->str_size );            \n"
-    "  calc_result res;                                               \n"
-    "  uint64_t sum = 0;                                              \n"
-    "  const char *str = static_cast<char*>( data ) + hash_data.str_offset;  \n"
-    "                                                                 \n"
-    "  res.data = new uint64_t[1];                                    \n"
-    "  res.data_size = sizeof uint64_t;                               \n"
-    "                                                                 \n"
-    "  coefs[0] = std::pow( hash_data->base, hash_data->start_idx );  \n"
-    "                                                                 \n"
-    "  for( std::size_t i = 1; i < hash_data->str_size; i++ )         \n"
-    "    coef[i] = coef[i - 1] * hash_data->base;                     \n"
-    "                                                                 \n"
-    "  for( std::size_t i = 0; i < hash_data->str_size; i++ )         \n"
-    "    sum += str[i] * coefs[i];                                    \n"
-    "                                                                 \n"
-    "  *reinterpret_cast<uint64_t*>(res.data) = sum;                  \n"
-    "                                                                 \n"
-    "  return res;                                                    \n"
-    "}                                                                \n";
-
 hash_calculator::hash_calculator()
 {
   constexpr bool t = calc_chunk::check_type<hash_data>();
   (void)t;  /* to suppress the warning */
+
+  std::ifstream method_src_file( "/usr/local/share/task_solver/task.cpp" );
+
+  if( !method_src_file.is_open() )
+    throw std::string( "no \"task.cpp\" file." );
+
+  std::stringstream tmp;
+
+  tmp << method_src_file.rdbuf(); /* to read all content regardless of any '\n' symbols */
+  method = tmp.str();
 }
 
 uint64_t hash_calculator::get_hash( const std::string &str )
@@ -129,7 +111,7 @@ uint64_t hash_calculator::get_hash( const std::string &str )
   std::size_t packages_cnt;
 
   if( !str.size() )
-    throw "the string to calculate a hash for has no data.";
+    throw std::string( "the string to calculate a hash for has no data." );
 
   packages_cnt = std::ceil( str.size() / (m_chunk_size * 1.0) );
 
@@ -154,9 +136,16 @@ uint64_t hash_calculator::get_hash( const std::string &str )
     chunks.push_back( std::move(chunk) );
   }
 
-  ctorrent ctorrent;
+  /* make the actual computation... */
 
-  ctorrent.send( chunks );
+  std::vector<calc_result> results;
 
-  return 0;
+  for( auto& chunk : chunks )
+    results.push_back( chunk.compute() );
+
+  uint64_t hash = 0;
+  for( auto& res : results )
+    hash += *reinterpret_cast<uint64_t*>(res.data);
+
+  return hash;
 }

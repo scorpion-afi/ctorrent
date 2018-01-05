@@ -28,6 +28,6 @@ All commands are executed within current directory.
            boost/<boost_version>/libs/x86_64
            
 5. Create a docker image:
-  $ sudo docker run -t arm-android .
+  $ sudo docker build -t arm-android .
 
 6. Remove all generated files (the docker image was saved by docker...).
