@@ -9,16 +9,16 @@
 
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <memory>
 
 #include <boost/log/trivial.hpp>
 
-#include "ctorrent_protocols.h"
-#include "ctorrent.h"
-
 #include "hash_calculator.h"
+
 
 /* is a POD type */
 struct hash_data
@@ -91,10 +91,10 @@ void hash_data_impl::set_data( const char *str, std::size_t str_size, std::size_
 
 hash_calculator::hash_calculator()
 {
-  constexpr bool t = calc_chunk::check_type<hash_data>();
-  (void)t;  /* to suppress the warning */
+  constexpr bool is_pod = calc_chunk::check_type<hash_data>();
+  (void)is_pod;  /* to suppress the warning */
 
-  std::ifstream method_src_file( "/usr/local/share/task_solver/task.cpp" );
+  std::ifstream method_src_file( "/usr/local/share/task_solver/task_reverse.cpp" );
 
   if( !method_src_file.is_open() )
     throw std::string( "no \"task.cpp\" file." );
@@ -107,7 +107,7 @@ hash_calculator::hash_calculator()
 
 uint64_t hash_calculator::get_hash( const std::string &str )
 {
-  std::vector<calc_chunk> chunks;
+  std::vector<std::shared_ptr<base_calc>> chunks;
   std::size_t packages_cnt;
 
   if( !str.size() )
@@ -115,9 +115,12 @@ uint64_t hash_calculator::get_hash( const std::string &str )
 
   packages_cnt = std::ceil( str.size() / (m_chunk_size * 1.0) );
 
+  BOOST_LOG_TRIVIAL( info ) << "hash_calculator: amount of calculation objects: " << packages_cnt;
+  BOOST_LOG_TRIVIAL( info );
+
   for( std::size_t i = 0; i < packages_cnt; i++ )
   {
-    calc_chunk chunk;
+    auto chunk = std::make_shared<calc_chunk>();
     hash_data_impl data;
 
     const char *s;
@@ -130,22 +133,51 @@ uint64_t hash_calculator::get_hash( const std::string &str )
 
     data.set_data( s, str_size, start_idx, base );
 
-    chunk.grab_data( data );
-    chunk.set_method_src( method );
+    chunk->grab_data( data );
+    chunk->set_method_src( method );
 
     chunks.push_back( std::move(chunk) );
   }
 
   /* make the actual computation... */
+  return distribute_calculation( chunks );
+}
 
-  std::vector<calc_result> results;
-
-  for( auto& chunk : chunks )
-    results.push_back( chunk.compute() );
-
+uint64_t hash_calculator::distribute_calculation( const std::vector<std::shared_ptr<base_calc>>& objs )
+{
+  std::size_t received_cnt = 0;
+  std::string res_str;
   uint64_t hash = 0;
-  for( auto& res : results )
-    hash += *reinterpret_cast<uint64_t*>(res.data);
+
+  ctorrent_client cl;
+
+  cl.send( objs, false );
+
+  while( received_cnt < objs.size() )
+  {
+    ctorrent_client::results_t results = cl.receive();
+
+    for( const auto& res : results )
+    {
+      /* ctorrent_client library returns base_serialize objects and it's our task to cast them to proper
+       * type, as ctorrent_client library guarantees that result objects are at least base_calc_result based
+       * and we know that we sent calc_chunk objects which have calc_result objects as results we can make
+       * static_cast instead of dynamic_cast */
+      auto calc_res = std::static_pointer_cast<const calc_result>(res);
+
+      /* an action specific to the task we're computing */
+      //hash += *reinterpret_cast<uint64_t*>(calc_res->data);
+
+      /* we have to perform a left-side lexicographic add */
+      res_str = std::string( calc_res->data, calc_res->data_size ) + res_str;
+    }
+
+    received_cnt += results.size();
+  }
+
+  BOOST_LOG_TRIVIAL( info );
+  BOOST_LOG_TRIVIAL( info ) << "hash_calculator: a reversed string: " << res_str;
+  BOOST_LOG_TRIVIAL( info );
 
   return hash;
 }

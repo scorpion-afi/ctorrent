@@ -25,4 +25,8 @@ for container_name in ${containers}; do
    -w /home/dev/build \
    ${container_name} \
    bash /home/dev/project/build_target.sh
+   
+   if [ ! -f build/build_success ]; then
+     exit 1
+   fi
 done

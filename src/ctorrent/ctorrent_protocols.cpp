@@ -20,10 +20,10 @@
 
 #include "ctorrent_protocols.h"
 
+
 class compute_module
 {
 public:
-
   ~compute_module();
 
   /* no copy semantic */
@@ -43,10 +43,9 @@ public:
   }
 
   static compute_module& get_compute_module( const std::string &task_source );
-  calc_result operator()( const void* data ) const;
+  std::shared_ptr<base_calc_result> operator()( const calc_chunk& co, const void* data ) const;
 
 private:
-
   compute_module();
   compute_module( const std::string &task_src );
 
@@ -84,7 +83,7 @@ compute_module::compute_module( const std::string &task_src ) : compute_module()
 
   get_module_symbol();
 
-  BOOST_LOG_TRIVIAL( debug ) << "[debug] a new compute module has been loaded.\n";
+  BOOST_LOG_TRIVIAL( debug ) << "[debug] a new compute module has been loaded.";
 }
 
 compute_module::~compute_module()
@@ -135,7 +134,7 @@ void compute_module::compile_module()
     std::remove( module_name.c_str() );
 
     execle( "/usr/bin/g++", "/usr/bin/g++", "--shared", "-o", module_name.c_str(), file_name.c_str(),
-            "-fpic", "-fPIC", (char*)NULL, env_vars );
+            "-fpic", "-fPIC", "-g3", "-O0", (char*)NULL, env_vars );
 
     std::stringstream err_stream;
 
@@ -194,6 +193,7 @@ void compute_module::get_module_symbol()
   }
 }
 
+/* TODO: compute_module supports move-semantic, so it can be stolen from loaded_modules vector */
 compute_module& compute_module::get_compute_module( const std::string &task_source )
 {
   for( auto& module : compute_module::loaded_modules )
@@ -207,17 +207,33 @@ compute_module& compute_module::get_compute_module( const std::string &task_sour
   return compute_module::loaded_modules.back();
 }
 
-calc_result compute_module::operator()( const void* data ) const
+std::shared_ptr<base_calc_result> compute_module::operator()( const calc_chunk& co, const void* data ) const
 {
-  typedef calc_result (*compute_fn)(const void*);
+  typedef std::shared_ptr<base_calc_result> (*compute_fn)(const calc_chunk& co, const void*);
 
-  BOOST_LOG_TRIVIAL( debug ) << "[debug] use the compute module.\n";
+  BOOST_LOG_TRIVIAL( debug ) << "[debug] use the compute module.";
 
-  return reinterpret_cast<compute_fn>(module_symbol)( data );
+  return reinterpret_cast<compute_fn>(module_symbol)( co, data );
+}
+
+calc_result::calc_result() : data(nullptr), data_size(0),
+    calc_result_id(0) /* by default initialize by an invalid value */
+{
+}
+
+calc_result::calc_result( const calc_chunk& calc_obj ) : calc_result()
+{
+  calc_result_id = calc_obj.get_calc_chunk_id();
+}
+
+calc_result::~calc_result()
+{
+  delete [] data;
 }
 
 
-calc_chunk::calc_chunk() : m_data(nullptr), m_data_size(0)
+calc_chunk::calc_chunk() : calc_chunk_id(0), /* by default initialize by an invalid value */
+    m_data(nullptr), m_data_size(0)
 {
 }
 
@@ -260,11 +276,11 @@ void calc_chunk::set_method_src( std::string method_src )
   m_method_src = std::move(method_src);
 }
 
-calc_result calc_chunk::compute()
+std::shared_ptr<base_calc_result> calc_chunk::compute()
 {
   compute_module& module = compute_module::get_compute_module( m_method_src );
 
-  return module( m_data );
+  return module( *this, m_data );
 }
 
 std::string calc_chunk::get_info() const

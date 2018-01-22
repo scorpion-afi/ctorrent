@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cmath>
 #include <vector>
 #include <cstdint>
+#include <memory>
 
 #include "ctorrent_protocols.h"
                                                                  
@@ -39,17 +40,17 @@ struct hash_data
   std::size_t base;
 };
                                                                  
-extern "C" calc_result compute( const void* data )
+extern "C" std::shared_ptr<base_calc_result> compute( const calc_chunk& co, const void* data )
 {
   const hash_data* _hash_data = static_cast<const hash_data*>( data );
   std::vector<uint64_t> coefs( _hash_data->str_size );
   const char* str = static_cast<const char*>( data ) + _hash_data->str_offset;
 
-  calc_result res;
+  std::shared_ptr<calc_result> res = std::make_shared<calc_result>( co );
   uint64_t sum = 0;
 
-  res.data = reinterpret_cast<char*>( new uint64_t[1] );
-  res.data_size = sizeof(uint64_t);
+  res->data = reinterpret_cast<char*>( new uint64_t[1] );
+  res->data_size = sizeof(uint64_t);
 
   coefs[0] = std::pow( _hash_data->base, _hash_data->start_idx );
 
@@ -59,7 +60,7 @@ extern "C" calc_result compute( const void* data )
   for( std::size_t i = 0; i < _hash_data->str_size; i++ )
     sum += str[i] * coefs[i];
                                                                  
-  *reinterpret_cast<uint64_t*>(res.data) = sum;
+  *reinterpret_cast<uint64_t*>(res->data) = 1006/*sum*/;
 
   return res;
 }

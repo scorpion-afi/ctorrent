@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#cmakedefine DEBUG
+
 #cmakedefine ANDROID_BUILD
 #cmakedefine X86_64_BUILD
 

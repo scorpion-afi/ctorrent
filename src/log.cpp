@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
@@ -35,6 +36,7 @@ void init_boost_log( void )
   /* create and initiate stream based sink backend */
   boost::shared_ptr<sinks::text_ostream_backend> stream_log_backend =
       boost::make_shared<sinks::text_ostream_backend> ();
+  const char* env_value;
 
   if( getenv ("LOG_TTY") )
     /* we can't allow to deallocate std::clog object :) */
@@ -56,9 +58,11 @@ void init_boost_log( void )
   log_core->set_filter(  logging::trivial::severity >= logging::trivial::warning );
 
   /* set up global filter for logging core */
-  if( getenv("LOG_ERR_LVL") )
+  if( (env_value = getenv("LOG_ERR_LVL")) && std::stoi( env_value ) == 1 )  /* std::string fears a nullptr ... */
     log_core->set_filter( logging::trivial::severity >= logging::trivial::error );
-  if( getenv("LOG_DBG_LVL") )
+  if( (env_value = getenv("LOG_INF_LVL")) && std::stoi( env_value ) == 1 )
+    log_core->set_filter( logging::trivial::severity >= logging::trivial::info );
+  if( (env_value = getenv("LOG_DBG_LVL")) && std::stoi( env_value ) == 1 )
     log_core->set_filter( logging::trivial::severity >= logging::trivial::debug );
 
   if( getenv("ENABLE_LOG") )

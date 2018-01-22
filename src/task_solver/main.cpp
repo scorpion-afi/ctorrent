@@ -18,28 +18,31 @@ int main( void )
 {
   std::string str;
 
-	init_boost_log();
+  init_boost_log();
 
-	std::getline( std::cin, str );
+  std::getline( std::cin, str );
 
-  BOOST_LOG_TRIVIAL( info ) << "\nget started to calculate a hash for the string...";
+  BOOST_LOG_TRIVIAL( info );
+  BOOST_LOG_TRIVIAL( info ) << "get started to calculate a hash for the string...";
 
   try
   {
     hash_calculator hash_calculator;
-    BOOST_LOG_TRIVIAL( info ) << " hash for the: \"" << str << "\": " << hash_calculator.get_hash( str ) << std::endl;
+
+    BOOST_LOG_TRIVIAL( info );
+    BOOST_LOG_TRIVIAL( info ) << "hash for the: \"" << str << "\": " << hash_calculator.get_hash( str ) << std::endl;
   }
   catch( const std::string &err )
   {
-    BOOST_LOG_TRIVIAL( info ) << err << std::endl;
+    BOOST_LOG_TRIVIAL( info ) << "an exception: " << err;
     return -1;
   }
   catch( const std::exception &exception )
   {
-    BOOST_LOG_TRIVIAL( info ) << exception.what() << std::endl;
+    BOOST_LOG_TRIVIAL( info ) << "an exception: " << exception.what();
   }
   catch(...)
   {
-    BOOST_LOG_TRIVIAL( info ) << "some exception has been caught.\n";
+    BOOST_LOG_TRIVIAL( info ) << "some exception has been caught.";
   }
 }

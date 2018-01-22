@@ -5,5 +5,6 @@ Logging:
 ENABLE_LOG - set to 1 for logging support
 LOG_TTY - set to 1 to log to STDERR
 LOG_FILE - set to 1 to log to ${PWD}/xdu.log   (you got to create the file before you're able to log into)
-LOG_ERR_LVL - set to 1 to choose highest logging level of log records to log (less log records)
-LOG_DBG_LVL - set to 1 to choose lowest logging level of log records to log (more log records)
+LOG_ERR_LVL - set to 1 to choose highest logging level of log records to the log (less log records)
+LOG_INF_LVL - set to 1 to choose middle logging level of log records to the log 
+LOG_DBG_LVL - set to 1 to choose lowest logging level of log records to the log (more log records)
