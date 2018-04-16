@@ -52,8 +52,9 @@ void send_thread::operator()()
       BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: send a result [" << result->get_id() << "] to client " <<
           cl->get_identify_str();
 
+      /* call to a remote_client version of serialize_and_send() which performs the flushing automatically
+       * when it's needed */
       cl->serialize_and_send( base_res.get() );
-      cl->flush_serialized_data();  /* TODO: it's very ineffectively to flush explicitly after each objects */
     }
     catch(...)
     {

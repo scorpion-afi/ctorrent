@@ -14,7 +14,8 @@
 /* no duplication of fd, as a remote_connection is an 'fd holder' */
 remote_client::remote_client( int socket_fd, notify_lock_queue<task_wrapper>& tasks_queue,
                               std::string identify_str ) :
-  remote_connection(socket_fd, std::move(identify_str)), tasks_queue(tasks_queue)
+  remote_connection(socket_fd, std::move(identify_str)), tasks_queue(tasks_queue),
+  received_objs_cnt(0), serialized_objs_cnt(0)
 {
   register_type_for_serialization<calc_result>();
 
@@ -28,6 +29,8 @@ void remote_client::process_deserialized_objs( deserialized_objs_t objs )
 
   /* TODO: handle non-task objects */
 
+  received_objs_cnt += objs.size();  /* amount of objects which expect replies to be sent back */
+
   /* put deserialized objects (tasks to calculate) to the tasks queue;
    * the tasks queue is shared between several remote_clients */
   for( auto& elm : objs )
@@ -39,6 +42,23 @@ void remote_client::process_deserialized_objs( deserialized_objs_t objs )
     BOOST_LOG_TRIVIAL( debug ) << "remote_client [" << get_id() << "]: queue a task [" << task.get_id() << "] to compute";
 
     tasks_queue.push( std::move(task) ); /* TODO: check maybe a compiler is clever enough to perform this automatically? */
+  }
+}
+
+void remote_client::serialize_and_send( const base_serialize* obj )
+{
+  remote_connection::serialize_and_send( obj );
+  serialized_objs_cnt++;
+
+  /* compare_exchange_strong may modify its argument */
+  unsigned long long expected = serialized_objs_cnt;
+
+  /* if an amount of serialized objects equals to an amount of received
+   * perform an explicit flushing */
+  if( received_objs_cnt.compare_exchange_strong( expected, 0 ) )
+  {
+    serialized_objs_cnt = 0;
+    flush_serialized_data();
   }
 }
 
