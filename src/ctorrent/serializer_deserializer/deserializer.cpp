@@ -118,7 +118,7 @@ std::vector<std::shared_ptr<base_serialize>> deserializer::get_deserialized_objs
 void deserializer::reset()
 {
   deserialization_finished = false;
-  m_size = client_package_size;
+  m_size = control_object_size;
   offset = 0;
 
   is_ctrl_obj_caught = false;
