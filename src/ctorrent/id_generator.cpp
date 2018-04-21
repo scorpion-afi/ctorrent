@@ -17,7 +17,6 @@ id_generator& id_generator::get_instance()
 
 uint64_t id_generator::get_id()
 {
-  std::lock_guard<std::mutex> lg(mtx);
   return value++;
 }
 
