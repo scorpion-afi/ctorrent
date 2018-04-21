@@ -45,7 +45,7 @@ public:
    * identify_str - some string used to identify this remote connection for debug purposes */
   explicit remote_connection( int socket_fd, std::string identify_str = "remote connection" );
 
-  ~remote_connection() override;
+  virtual ~remote_connection();
 
   /* TODO: it's an awful way..., to serialize a object by a polymorphic pointer(reference) we
    * have to register a type of an actual derived class which destroys all dynamic polymorphism :),
