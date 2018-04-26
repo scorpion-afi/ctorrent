@@ -45,7 +45,7 @@ private:
 };
 
 /* the boost.serialize library, by default, tracks addresses of objects serialized by pointers,
- * or registered, or exported, it may lead to omitting objects serialization if objects has the
+ * or registered, or exported, it may lead to omitting objects serialization if objects have the
  * same address, even if they're completely different objects (e.g. an object is created in stack,
  * a pointer to the object gets used for serialization, the object gets destroyed, and at the
  * same space in stack, a new object gets created), to avoid this we disable such tracking for

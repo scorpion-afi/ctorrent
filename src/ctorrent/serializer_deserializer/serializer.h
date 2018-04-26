@@ -21,7 +21,7 @@ public:
   virtual ~serializer();
 
   /* TODO: it's an awful way..., to serialize a object by a polymorphic pointer(reference) we
-   * have to register a type of an actual derived class which destroys all dynamic polymorphism :),
+   * have to register a type of an actual derived class which obliterates all dynamic polymorphism :),
    * as I know boost.serialize provides some way to fix it */
   template< class T >
   void register_type()

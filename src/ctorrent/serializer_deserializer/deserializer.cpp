@@ -17,7 +17,7 @@
 
 #include "ctorrent_protocols.h"
 deserializer::deserializer() :
-  /* the serializer doesn't provide any meta-data, so the deserializer have to
+  /* the serializer doesn't provide any meta-data, so the deserializer has to
    * not expect it too */
   str_streambuf(std::ios_base::in), raw_ar(str_streambuf, boost::archive::no_header)
 {
