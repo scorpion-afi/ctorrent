@@ -34,6 +34,27 @@ remote_connection::~remote_connection()
   close( socket_fd );
 }
 
+remote_connection& remote_connection::operator=( remote_connection&& that )
+{
+  swap( *this, that );
+
+  return *this;
+}
+
+/* TODO: add more guarantees that the function doesn't throw an exception */
+void swap( remote_connection& lhs, remote_connection& rhs ) noexcept
+{
+  using std::swap;
+
+  /* swap base parts of swapping objects */
+  swap( static_cast<this::base&>(lhs), static_cast<remote_connection::base&>(rhs) );
+
+  swap( lhs.socket_fd, rhs.socket_fd );
+  swap( lhs.m_serializer, rhs.m_serializer );
+  swap( lhs.m_deserializer, rhs.m_deserializer );
+  swap( lhs.identify_str, rhs.identify_str );
+}
+
 void remote_connection::consume_data_from_remote()
 {
   int ret;
@@ -104,4 +125,3 @@ void remote_connection::flush_serialized_data()
   file << serialized_objs;
 #endif
 }
-

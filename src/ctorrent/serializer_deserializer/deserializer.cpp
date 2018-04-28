@@ -18,16 +18,11 @@
 #include "ctorrent_protocols.h"
 deserializer::deserializer() :
   /* the serializer doesn't provide any meta-data, so the deserializer has to
-   * not expect it too */
-  str_streambuf(std::ios_base::in), raw_ar(str_streambuf, boost::archive::no_header)
+   * not expect them too */
+  str_streambuf(std::ios_base::in), raw_ar(new boost::archive::binary_iarchive(str_streambuf, boost::archive::no_header))
 {
   BOOST_LOG_TRIVIAL( debug ) << "deserializer: creaete a deserializer";
   reset();
-}
-
-deserializer::~deserializer()
-{
-  BOOST_LOG_TRIVIAL( debug ) << "deserializer: destroy the deserializer";
 }
 
 char& deserializer::front()
@@ -87,7 +82,7 @@ bool deserializer::deserialize( std::size_t num_of_read_bytes )
       base_serialize* so = nullptr;
 
       BOOST_LOG_TRIVIAL( debug ) << " deserialize an object";
-      raw_ar >> so; /* TODO: how to get if the operation was successful? */
+      *raw_ar >> so; /* TODO: how to get if the operation was successful? */
 
       deserialized_objs.push_back( std::shared_ptr<base_serialize>(so) );
     }

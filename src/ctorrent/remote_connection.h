@@ -17,7 +17,6 @@
 #include "deserializer.h"
 #include "serializer_deserializer.h"
 
-/* TODO: no-copy sementic */
 
 /* this abstract-class describes a remote connection;
  * it's responsible for:
@@ -29,6 +28,8 @@
  *
  * it's up to this class to chose when it's a time to make an actually write to a socket;
  *
+ * doesn't support a copy-semantic.
+ *
  * TODO: by default, derived classes are able to get/send only base_serialize objects,
  *       if other objects have to be sent too, those types have to be registered
  *       (by using register_type_for_serialization()   to register type to send,
@@ -39,13 +40,18 @@ class remote_connection : public object
 public:
   using deserialized_objs_t = std::vector<std::shared_ptr<base_serialize>>;
 
-  remote_connection() = delete;
-
   /* socket_fd - a socket to wrap
    * identify_str - some string used to identify this remote connection for debug purposes */
   explicit remote_connection( int socket_fd, std::string identify_str = "remote connection" );
-
   virtual ~remote_connection();
+
+  remote_connection( const remote_connection& that ) = delete;
+  remote_connection& operator=( const remote_connection& that ) = delete;
+
+  remote_connection( remote_connection&& that ) = default;
+  remote_connection& operator=( remote_connection&& that );
+
+  friend void swap( remote_connection& lhs, remote_connection& rhs ) noexcept;
 
   /* TODO: it's an awful way..., to serialize a object by a polymorphic pointer(reference) we
    * have to register a type of an actual derived class which destroys all dynamic polymorphism :),
@@ -81,10 +87,13 @@ public:
    * objects to send, thus allowing the implementation to work more effectively */
   void serialize_and_send( const base_serialize* obj );
 
-  /* triggers serialization data to be send to the remote side ('socket_fd')*/
+  /* triggers serialization data to be sent to the remote side ('socket_fd')*/
   void flush_serialized_data();
 
   const std::string& get_identify_str() const { return identify_str; }
+
+private:
+  using base = object;
 
 private:
   int socket_fd;

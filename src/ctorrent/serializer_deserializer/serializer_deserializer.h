@@ -58,6 +58,7 @@ protected:
   friend std::ostream& operator<<( std::ostream& o_stream, const control_object& control_obj );
   friend std::istream& operator>>( std::istream& i_stream, control_object& control_obj );
 
+protected:
   static const std::size_t client_package_size = 65536; /* control object + serialized data (max size) */
   static const std::size_t control_object_size = sizeof(control_object);
 

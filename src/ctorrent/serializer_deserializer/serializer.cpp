@@ -16,16 +16,11 @@ serializer::serializer() :
    * meta-data inserted by default by using no_header flag; otherwise it should be
    * recreated each time we're going to serialize another set of objects (after
    * get_serialized_objs() call) */
-  str_streambuf(std::ios_base::out), raw_ar(str_streambuf, boost::archive::no_header)
+  str_streambuf(std::ios_base::out), raw_ar(new boost::archive::binary_oarchive(str_streambuf, boost::archive::no_header))
 {
   BOOST_LOG_TRIVIAL( debug ) << "serializer: create a serializer";
 
   reset();
-}
-
-serializer::~serializer()
-{
-  BOOST_LOG_TRIVIAL( debug ) << "serializer: destroy the serializer";
 }
 
 bool serializer::serialize( const base_serialize* obj )
@@ -39,7 +34,7 @@ bool serializer::serialize( const base_serialize* obj )
 
   BOOST_LOG_TRIVIAL( debug ) << " serialize an object";
 
-  raw_ar << obj; /* serialize by using a polymorphic pointer */
+  *raw_ar << obj; /* serialize by using a polymorphic pointer */
 
   serialized_objs_size = str_streambuf.str().size();
 
