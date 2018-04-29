@@ -7,6 +7,8 @@
 
 #include "config.h"
 
+#include <iostream>
+
 #include <boost/log/trivial.hpp>
 
 #include "epoll_event_loop.h"
@@ -40,6 +42,23 @@ epoll_event_loop::~epoll_event_loop()
   close( epoll_fd );
 
   BOOST_LOG_TRIVIAL( debug ) << "epoll: destroy the epoll wrapper.";
+}
+
+epoll_event_loop& epoll_event_loop::operator=( epoll_event_loop&& that )
+{
+  swap( *this, that );
+
+  return *this;
+}
+
+void swap( epoll_event_loop& lhs, epoll_event_loop& rhs ) noexcept
+{
+  using std::swap;
+
+  swap( static_cast<epoll_event_loop::base&>(lhs), static_cast<epoll_event_loop::base&>(rhs) );
+
+  swap( lhs.epoll_fd, rhs.epoll_fd );
+  swap( lhs.id_to_ev_src_map, rhs.id_to_ev_src_map );
 }
 
 uint64_t epoll_event_loop::add_event_source( int fd, event_type type, std::function<void(int, void*)> func, void* data,
@@ -220,20 +239,5 @@ std::ostream& operator <<( std::ostream& out, epoll_event_loop::event_type ev_ty
 
 event_source::event_source() : data(nullptr), type(), fd(-1), armed(false)
 {
-}
-
-event_source::~event_source()
-{
-  BOOST_LOG_TRIVIAL( debug ) << " event_source: remove event_source";
-}
-
-event_source::event_source( event_source&& that ) : event_source()
-{
-  std::swap( fd, that.fd );
-  std::swap( type, that.type );
-  std::swap( func, that.func );
-  std::swap( data, that.data );
-  std::swap( armed, that.armed );
-  std::swap( debug_str, that.debug_str );
 }
 

@@ -12,7 +12,7 @@
 #include <functional>
 #include <memory>
 #include <cstdint>
-#include <iostream>
+#include <iosfwd>
 #include <string>
 
 #include <sys/epoll.h>
@@ -30,9 +30,10 @@ class event_source;
  * an ability to handle this event by invoking 'handle_events';
  *
  * any errors are reported via exceptions
+ * doesn't support a copy semantic
  *
  * TODO: isn't thread-safe */
-class epoll_event_loop
+class epoll_event_loop : public object
 {
 public:
   enum class event_type { EPOLL_IN = EPOLLIN, EPOLL_OUT = EPOLLOUT, EPOLL_RDHUP = EPOLLRDHUP };
@@ -43,7 +44,15 @@ public:
   using event_cb = std::function<void(int, void*)>;
 
   epoll_event_loop();
-  virtual ~epoll_event_loop();
+  ~epoll_event_loop();
+
+  epoll_event_loop( const epoll_event_loop& that ) = delete;
+  epoll_event_loop& operator=( const epoll_event_loop& that ) = delete;
+
+  epoll_event_loop( epoll_event_loop&& that ) = default;
+  epoll_event_loop& operator=( epoll_event_loop&& that );
+
+  friend void swap( epoll_event_loop& lhs, epoll_event_loop& rhs ) noexcept;
 
   /* add a source of event (start being notified about the event);
    * callable object 'func' with dup('fd') and 'data' as arguments will be called
@@ -67,6 +76,8 @@ public:
   friend std::ostream& operator <<( std::ostream& out, epoll_event_loop::event_type ev_type );
 
 private:
+  using base = object;
+
   /* to map epoll.h constants to strings */
   static const std::string& get_event_name( uint32_t ev );
 
@@ -84,13 +95,14 @@ class event_source : public object
 public:
   /* no copy semantic as an event_source is supposed to be unique */
   event_source( const event_source& that ) = delete;
-  event_source( event_source&& that );
+  event_source& operator=( const event_source& that ) = delete;
 
-  ~event_source();
+  event_source( event_source&& that ) = default;
+  event_source& operator=( event_source&& that ) = default;
 
 private:
   /* only epoll_event_loop's instances should be able to create
-   * instances of 'event_source' object */
+   * instances of an 'event_source' object */
   friend class epoll_event_loop;
 
   event_source();
