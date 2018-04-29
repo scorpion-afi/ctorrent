@@ -15,6 +15,17 @@
 #include "remote_server.h"
 #include "ctorrent.h"
 
+/* public API to distribute the calculation between eXecutian and Dispatching Units.
+ *
+ * this class represent a client - that who makes a calculation request.
+ *
+ * it's up to an user of this class to provide tasks to calculate (e.g. divide some big task
+ * into several small sub-tasks). After tasks are provided to this class by send() method
+ * it's class responsibility to send them to remote XDUs, collect responds and provide them
+ * to the caller via receive() method.
+ *
+ * doens't support a copy semantic.
+ */
 class ctorrent_client : public ctorrent
 {
 public:
@@ -22,14 +33,20 @@ public:
   using results_t = remote_server::deserialized_objs_t;
 
   ctorrent_client();
-  ~ctorrent_client() override;
+  ~ctorrent_client();
 
-  long get_version() const override { return 1; }
+  ctorrent_client( const ctorrent_client& that ) = delete;
+  ctorrent_client& operator=( const ctorrent_client& that ) = delete;
+
+  ctorrent_client( ctorrent_client&& that ) = default;
+  ctorrent_client& operator=( ctorrent_client&& that ) = default;
 
   /* protocol v0.1 */
 
   /* will return immediately, actual sending may be delayed by internal reasons;
-   * an exception is thrown in a case of an error */
+   * an exception is thrown in a case of an error;
+   * if an order of response objects is important 'is_order_important' has to be true (this may impact a performance,
+   * 'cause this prevents the library from returning response objects immediately as they've came from XDUs); */
   void send( const std::vector<std::shared_ptr<base_calc>>& objs, bool is_order_important = true );
 
   /* returns fd to build in the app's main loop;

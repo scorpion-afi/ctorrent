@@ -18,14 +18,9 @@
 
 class ctorrent
 {
-public:
-  ctorrent() {}
-  virtual ~ctorrent() {}
-
-  virtual long get_version() const = 0;
-
+protected:
   /* to get correct result use string.c_str() */
-  std::shared_ptr<std::string> convert_ipv4_from_binary_to_text( in_addr ipv4 )
+  static std::shared_ptr<std::string> convert_ipv4_from_binary_to_text( in_addr ipv4 )
   {
     /* man-page for inet_ntop says that at least an INET_ADDRSTRLEN-bytes buffer should
      * be provided, but there's no mentions about whether inet_ntop puts the '\0' symbol

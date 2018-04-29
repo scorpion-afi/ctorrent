@@ -47,7 +47,7 @@ void swap( remote_connection& lhs, remote_connection& rhs ) noexcept
   using std::swap;
 
   /* swap base parts of swapping objects */
-  swap( static_cast<this::base&>(lhs), static_cast<remote_connection::base&>(rhs) );
+  swap( static_cast<remote_connection::base&>(lhs), static_cast<remote_connection::base&>(rhs) );
 
   swap( lhs.socket_fd, rhs.socket_fd );
   swap( lhs.m_serializer, rhs.m_serializer );
