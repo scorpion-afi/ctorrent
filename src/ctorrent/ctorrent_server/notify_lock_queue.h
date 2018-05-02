@@ -13,33 +13,79 @@
 #include <mutex>
 #include <condition_variable>
 
+/* this class implements a thread-safe queue which blocks
+ * calling threads (both who tries to pushes and pops )
+ * till there's place to push to and something to pop.
+ *
+ * doesn't support a move semantic.
+ */
 template <class T>
 class notify_lock_queue
 {
 public:
-  notify_lock_queue( std::size_t max_size );
+  explicit notify_lock_queue( std::size_t max_size );
 
-  notify_lock_queue( const notify_lock_queue& other ) = delete;
-  notify_lock_queue( notify_lock_queue&& other ) = delete;
+  notify_lock_queue( const notify_lock_queue<T>& other );
+  notify_lock_queue<T> operator=( const notify_lock_queue<T>& other );
 
-  notify_lock_queue operator=( notify_lock_queue other ) = delete;
+  /* if we had a move semantic provided it might lead to a circumstances
+   * when an awaken thread accesses a moved object, so we disable such a semantic */
+  notify_lock_queue( notify_lock_queue<T>&& other ) = delete;
+  notify_lock_queue<T> operator=( notify_lock_queue<T>&& other ) = delete;
+
+  /* TODO: make a swap when it's needed, think about cv.notify about swapping */
+  template <class U>
+  friend void swap( notify_lock_queue<U>& lhs, notify_lock_queue<U>& rhs );
 
   void push( T elm );
 
   std::shared_ptr<T> pop();
 
 private:
-  std::mutex mtx;
+  mutable std::mutex mtx;
   std::condition_variable cv;
 
   std::size_t max_size;
   std::queue<T> queue;
 };
 
+template <class U>
+void swap( notify_lock_queue<U>& lhs, notify_lock_queue<U>& rhs ) = delete;
+
 template <class T>
 notify_lock_queue<T>::notify_lock_queue( std::size_t max_size )
   : max_size(max_size)
 {
+}
+
+template <class T>
+notify_lock_queue<T>::notify_lock_queue( const notify_lock_queue<T>& other )
+{
+  std::lock_guard<std::mutex> lk( other.mtx );
+
+  max_size = other.max_size;
+  queue = other.queue;
+}
+
+template <class T>
+notify_lock_queue<T> notify_lock_queue<T>::operator=( const notify_lock_queue<T>& other )
+{
+  if( this == &other )
+    return *this;
+
+  std::unique_lock<std::mutex> lk_lhs( mtx, std::defer_lock );
+  std::unique_lock<std::mutex> lk_rhs( other.mtx, std::defer_lock );
+
+  std::lock( lk_lhs, lk_rhs );
+
+  max_size = other.max_size;
+  queue = other.queue;
+
+  lk_lhs.unlock(); /* it's desirable to unlock a mutex before make a notification */
+
+  cv.notify_all();
+
+  return *this;
 }
 
 template <class T>
