@@ -16,6 +16,10 @@
  * it provides:
  *  - unique, per process, id
  *
+ * to be useful for deriving from this class provides both
+ * copy and move semantics despite that the class manages
+ * a not copy-able resource.
+ *
  * a dtor is NOT virtual;
  * a copy operation affects an id;
  * a copy assignment operation affects an id;
@@ -36,7 +40,14 @@ public:
 
   /* if we make a copy we make an another object, so generate a new id */
   object( const object& that ) : id(id_generator::get_instance().get_id()) {}
-  object& operator=( const object& that ) { id = id_generator::get_instance().get_id(); return *this; }
+  object& operator=( const object& that )
+  {
+    if( this == &that )
+      return *this;
+
+    id = id_generator::get_instance().get_id();
+    return *this;
+  }
 
   object( object&& that ) = default;
   object& operator=( object&& that ) = default;
