@@ -223,6 +223,8 @@ calc_result::calc_result() : data(nullptr), data_size(0),
 
 calc_result::calc_result( const calc_chunk& calc_obj ) : calc_result()
 {
+  /* it's not allowed to initialize members in mem-init-list while using a delegate ctor,
+   * 'cause there's an assumption that such a ctor initializes all members */
   calc_result_id = calc_obj.get_calc_chunk_id();
 }
 
@@ -240,27 +242,6 @@ calc_chunk::calc_chunk() : calc_chunk_id(0), /* by default initialize by an inva
 calc_chunk::~calc_chunk()
 {
   delete [] m_data;
-}
-
-calc_chunk::calc_chunk( calc_chunk &&that ) : calc_chunk()
-{
-  swap( *this, that );
-}
-
-calc_chunk& calc_chunk::operator=( calc_chunk that )
-{
-  swap( *this, that );
-
-  return *this;
-}
-
-void swap( calc_chunk &first, calc_chunk &second )
-{
-  using std::swap;
-
-  swap( first.m_data, second.m_data );
-  swap( first.m_data_size, second.m_data_size );
-  swap( first.m_method_src, second.m_method_src );
 }
 
 void calc_chunk::grab_data( const i_chunk_data &data )

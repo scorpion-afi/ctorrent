@@ -22,7 +22,7 @@
 #include "id_generator.h"
 
 
-/* the base class for classes used as a result of a base_calc::compute() member;
+/* the base class for classes used as a result of a base_calc::compute() method;
  * derived classes have to provide a template serialize() function to make own serialization */
 class base_calc_result : public base_serialize
 {
@@ -80,12 +80,19 @@ BOOST_CLASS_TRACKING( base_calc, track_never );
 class calc_chunk;
 
 /* the easiest implementation of a base_calc_result class, just controls a C-array of bytes;
- * no copy semantic */
+ * no copy-semantic (Why, why not? What's a reason to support such a no-trivial copy-semantic?) */
 class calc_result : public base_calc_result
 {
 public:
+  /* a calc_result object needs the same id as a counterpart calc_chunk object */
   explicit calc_result( const calc_chunk& calc_obj );
   ~calc_result() override;
+
+  calc_result( const calc_result& that ) = delete;
+  calc_result& operator=( const calc_result& that ) = delete;
+
+  calc_result( calc_result&& that ) = default;
+  calc_result& operator=( calc_result&& that ) = default;
 
   /* way to order calc_result packages */
   bool operator<( const calc_result& rhs ) const { return calc_result_id < rhs.calc_result_id; }
@@ -161,15 +168,13 @@ class calc_chunk : public base_calc
 {
 public:
   calc_chunk();
-  virtual ~calc_chunk();
+  ~calc_chunk() override;
 
-  calc_chunk( const calc_chunk &that ) = delete;
-  calc_chunk( calc_chunk &&that );
+  calc_chunk( const calc_chunk& that ) = delete;
+  calc_chunk& operator=( const calc_chunk& that ) = delete;
 
-  calc_chunk& operator=( calc_chunk that );
-
-  friend void swap( calc_chunk &first, calc_chunk &second );
-
+  calc_chunk( calc_chunk&& that ) = default;
+  calc_chunk& operator=( calc_chunk&& that ) = default;
 
   void grab_data( const i_chunk_data &data );
   void set_method_src( std::string method_src );
@@ -184,6 +189,7 @@ public:
   template< class T >
   static constexpr bool check_type() { return std::is_pod<T>::value ? true : throw std::string( "bad type" ); }
 
+  /* a calc_result object needs the same id as a counterpart calc_chunk object */
   uint64_t get_calc_chunk_id() const { return calc_chunk_id; }
 
   /* for debug purposes */
@@ -196,8 +202,8 @@ private:
   template<class Archive>
   void save( Archive& ar, const unsigned int version ) const
   {
-    /* provide a unique, per a process, id during serialization/sending of an object */
-    uint64_t calc_chunk_id = id_generator::get_instance().get_id();
+    /* provide a unique, per a client-server connection, id during serialization/sending of an object */
+    calc_chunk_id = id_generator::get_instance().get_id();
 
     /* an insane way to serialize base part of derived object */
     ar & boost::serialization::base_object<const base_calc>(*this);
@@ -236,7 +242,8 @@ private:
   BOOST_SERIALIZATION_SPLIT_MEMBER();
 
 private:
-  uint64_t calc_chunk_id;
+  /* server doesn't care about this id, it's up to a client side to handle it properly */
+  mutable uint64_t calc_chunk_id;
 
   /* data to process */
   char* m_data;

@@ -22,8 +22,17 @@
 class base_serialize
 {
 public:
+  base_serialize() = default;
   virtual ~base_serialize() = default;  /* this type should be polymorphic to
                                            allow polymorphic serialization/deserialization */
+
+
+  /* if we have an explicitly defaulted dtor we have NO an implicitly declared move semantic */
+  base_serialize( const base_serialize& that ) = default;
+  base_serialize& operator=( const base_serialize& that ) = default;
+
+  base_serialize( base_serialize&& that ) = default;
+  base_serialize& operator=( base_serialize&& that ) = default;
 
 private:
   /* an 'access' class should have an access to our private method 'serialize' */
