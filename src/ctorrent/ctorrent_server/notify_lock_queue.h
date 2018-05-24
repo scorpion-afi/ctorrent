@@ -14,7 +14,7 @@
 #include <condition_variable>
 
 /* this class implements a thread-safe queue which blocks
- * calling threads (both who tries to pushes and pops )
+ * calling threads (both who try to push and pop )
  * till there's place to push to and something to pop.
  *
  * doesn't support a move semantic.
