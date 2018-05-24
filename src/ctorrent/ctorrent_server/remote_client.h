@@ -59,8 +59,13 @@ private:
 class remote_client : public remote_connection
 {
 public:
-  remote_client() = delete;
   remote_client( int socket_fd, notify_lock_queue<task_wrapper>& task_queue, std::string identify_str );
+
+  remote_client( const remote_client& that ) = delete;
+  remote_client& operator=( const remote_client& that ) = delete;
+
+  remote_client( remote_client&& that ) = default;
+  remote_client& operator=( remote_client&& that ) = default;
 
   /* this function gets called if some objects were deserialized */
   void process_deserialized_objs( deserialized_objs_t objs ) override;
