@@ -9,8 +9,8 @@
 #define CTORRENT_PROTOCOLS_H_
 
 #include <string>
-#include <type_traits>
 #include <memory>
+#include <iosfwd>
 
 #include <boost/log/trivial.hpp>
 #include <boost/serialization/base_object.hpp>
@@ -60,7 +60,7 @@ class base_calc : public base_serialize
 public:
   /* make an actual computation;
    * what's going on under hood depends on implementation of this abstract class */
-  virtual std::shared_ptr<base_calc_result> compute() = 0;
+  virtual std::unique_ptr<base_calc_result> compute() = 0;
 
 private:
   /* an 'access' class should have an access to our private method 'serialize' */
@@ -77,6 +77,10 @@ private:
 
 BOOST_CLASS_TRACKING( base_calc, track_never );
 
+
+/*               a calc_chunk-calc_result task-result pair               */
+
+
 class calc_chunk;
 
 /* the easiest implementation of a base_calc_result class, just controls a C-array of bytes;
@@ -84,7 +88,8 @@ class calc_chunk;
 class calc_result : public base_calc_result
 {
 public:
-  /* a calc_result object needs the same id as a counterpart calc_chunk object */
+  /* to match a calc_result object with a counterpart calc_chunk object
+   * to be able to order calc_result objects in the same order as calc_chunk objects */
   explicit calc_result( const calc_chunk& calc_obj );
   ~calc_result() override;
 
@@ -145,30 +150,35 @@ private:
   BOOST_SERIALIZATION_SPLIT_MEMBER();
 
 private:
+  /* stores an id of a counterpart calc_chunk object */
   uint64_t calc_result_id;
 };
 
 BOOST_CLASS_TRACKING( calc_result, track_never );
 
-/* interface class to inherit from to provide the class which can be
- * used to pass the user-data to a calc_chunk class */
-class i_chunk_data
-{
-public:
-  virtual ~i_chunk_data() {}
 
-  virtual const void* get_raw_data() const = 0;
-  virtual std::size_t get_raw_data_size() const = 0;
-};
-
-/* the easiest implementation of a base_calc class,
- * manages string representing sources of code and C-array of data;
- * no copy semantic */
+/* if a task can be divided into several parts - chunks this class can be used
+ * to represent such parts; each chunk contains an independent task to do (sources
+ * as a std::string object) and a data to be processed by this task (data can be only
+ * a POD-type object).
+ *
+ * no copy semantic (Why, why not? What's a reason to support such a no-trivial copy-semantic?);
+ */
 class calc_chunk : public base_calc
 {
 public:
-  calc_chunk();
-  ~calc_chunk() override;
+  /* @param [in] task_scr - source of task to compute
+   *   An API of a task to compute:
+   *
+   *   [in] chunk - a calc_chunk the method gets called for
+   *   [in] data - data associated with this chunk, the data to process
+   *   extern "C" std::unique_ptr<base_calc_result> compute( const calc_chunk& chunk, const void* data );
+   *
+   *   Note: the function has to be declared with C linkage to allow being found by libdl
+   * @param [in] data - a pointer to a dynamically allocated ARRAY of chars
+   * @param [in] data_size - a size of @c data array (used as to pass the data over network the size is necessary)
+   */
+  calc_chunk( std::string task_src, std::unique_ptr<char[]> data, uint64_t data_size );
 
   calc_chunk( const calc_chunk& that ) = delete;
   calc_chunk& operator=( const calc_chunk& that ) = delete;
@@ -176,28 +186,25 @@ public:
   calc_chunk( calc_chunk&& that ) = default;
   calc_chunk& operator=( calc_chunk&& that ) = default;
 
-  void grab_data( const i_chunk_data &data );
-  void set_method_src( std::string method_src );
+  std::unique_ptr<base_calc_result> compute() override;
 
-  std::shared_ptr<base_calc_result> compute() override;
-
-  /* this function can be used to check a 'm_data' type;
-   * calc_chunk is intended to be passed over sockets by using boost.serialization library,
-   * so 'm_data' got set by 'grab_data' is going to be passed too, but host side knows nothing
-   * about the type of 'm_data' so to make this class universal the type of 'm_data' has to be
-   * POD type (C-like structure) so 'm_data' can be passed like a chunk of memory */
-  template< class T >
-  static constexpr bool check_type() { return std::is_pod<T>::value ? true : throw std::string( "bad type" ); }
-
-  /* a calc_result object needs the same id as a counterpart calc_chunk object */
-  uint64_t get_calc_chunk_id() const { return calc_chunk_id; }
-
-  /* for debug purposes */
-  std::string get_info() const;
+  /* for loging and debug purposes */
+  friend std::ostream& operator<<( std::ostream& stream, const calc_chunk& co );
 
 private:
+  /* a calc_result object needs the same id as a counterpart calc_chunk object */
+  friend class calc_result;
+
   /* an 'access' class should have an access to our private method 'serialize' */
   friend class boost::serialization::access;
+
+  /* only boost.serialization library has to be able to use this ctor;
+   * after boost.serialization library has created object using this ctor
+   * object gets initialized by serialize/load method so it's safe to have
+   * such the ctor as a default one */
+  calc_chunk() = default;
+
+  uint64_t get_calc_chunk_id() const { return calc_chunk_id; }
 
   template<class Archive>
   void save( Archive& ar, const unsigned int version ) const
@@ -209,12 +216,12 @@ private:
     ar & boost::serialization::base_object<const base_calc>(*this);
 
     ar & calc_chunk_id;
-    ar & m_data_size;
+    ar & data_size;
 
-    for( std::size_t i = 0; i < m_data_size; i++ )
-      ar & m_data[i];
+    for( std::size_t i = 0; i < data_size; i++ )
+      ar & data[i];
 
-    ar & m_method_src;
+    ar & task_src;
 
     BOOST_LOG_TRIVIAL( debug ) << "calc_chunk::save";
   }
@@ -226,14 +233,14 @@ private:
     ar & boost::serialization::base_object<base_calc>(*this);
 
     ar & calc_chunk_id;
-    ar & m_data_size;
+    ar & data_size;
 
-    m_data = new char[m_data_size];
+    data.reset( new char[data_size] );
 
-    for( std::size_t i = 0; i < m_data_size; i++ )
-      ar & m_data[i];
+    for( std::size_t i = 0; i < data_size; i++ )
+      ar & data[i];
 
-    ar & m_method_src;
+    ar & task_src;
 
     BOOST_LOG_TRIVIAL( debug ) << "calc_chunk::load";
   }
@@ -242,17 +249,14 @@ private:
   BOOST_SERIALIZATION_SPLIT_MEMBER();
 
 private:
+  std::string task_src;
+
+  /* this data is going to be passed over network AS IS, so can hold only POD types */
+  std::unique_ptr<char[]> data;
+  uint64_t data_size;
+
   /* server doesn't care about this id, it's up to a client side to handle it properly */
   mutable uint64_t calc_chunk_id;
-
-  /* data to process */
-  char* m_data;
-  std::size_t m_data_size;
-
-  /* extern "C" std::shared_ptr<base_calc_result> compute( const calc_chunk&, const void* );
-   *
-   * Note: the function has to be declared with C linkage to allow being found by libdl */
-  std::string m_method_src;
 };
 
 BOOST_CLASS_TRACKING( calc_chunk, track_never );

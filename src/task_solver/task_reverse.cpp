@@ -20,12 +20,12 @@ struct reverse_string_data
   std::size_t base;
 };
 
-extern "C" std::shared_ptr<base_calc_result> compute( const calc_chunk& co, const void* data )
+extern "C" std::unique_ptr<base_calc_result> compute( const calc_chunk& co, const void* data )
 {
   const reverse_string_data* reverse_data = static_cast<const reverse_string_data*>( data );
   const char* str = static_cast<const char*>( data ) + reverse_data->str_offset;
 
-  std::shared_ptr<calc_result> res = std::make_shared<calc_result>( co );
+  std::unique_ptr<calc_result> res( new calc_result( co ) );
 
   res->data = new char[reverse_data->str_size];
   res->data_size = reverse_data->str_size;

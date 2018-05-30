@@ -9,7 +9,6 @@
 
 #include <fstream>
 #include <vector>
-#include <deque>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -17,6 +16,8 @@
 
 #include <boost/log/trivial.hpp>
 
+#include "ctorrent_protocols.h"
+#include "ctorrent_client.h"
 #include "hash_calculator.h"
 
 
@@ -30,70 +31,10 @@ struct hash_data
   std::size_t base;
 };
 
-/* no copy semantic */
-class hash_data_impl : public i_chunk_data
-{
-public:
-
-  hash_data_impl() : i_chunk_data(), raw_data(nullptr), raw_data_size(0) {}
-  ~hash_data_impl() { delete [] raw_data; }
-
-  hash_data_impl( const hash_data_impl &that ) = delete;
-
-  hash_data_impl( hash_data_impl &&that ) : hash_data_impl()
-  {
-    swap( *this, that );
-  }
-
-  hash_data_impl& operator=( hash_data_impl that )
-  {
-    swap( *this, that );
-
-    return *this;
-  }
-
-  friend void swap( hash_data_impl &first, hash_data_impl &second )
-  {
-    using std::swap;
-
-    swap( first.raw_data, second.raw_data );
-    swap( first.raw_data_size, second.raw_data_size );
-  }
-
-  void set_data( const char *str, std::size_t str_size, std::size_t start_idx, std::size_t base );
-
-  std::size_t get_raw_data_size() const override { return raw_data_size; }
-  const void* get_raw_data() const override  { return raw_data; }
-
-private:
-
-  char *raw_data;
-  std::size_t raw_data_size;
-};
-
-void hash_data_impl::set_data( const char *str, std::size_t str_size, std::size_t start_idx,
-                               std::size_t base)
-{
-  hash_data *data;
-
-  raw_data_size = sizeof *data + str_size;
-  raw_data = new char[raw_data_size];
-
-  data = reinterpret_cast<hash_data*>( raw_data );
-
-  data->str_offset = sizeof *data;
-  data->str_size = str_size;
-  data->start_idx = start_idx;
-  data->base = base;
-
-  std::memcpy( raw_data + data->str_offset, str, data->str_size );
-}
+static_assert( std::is_pod<hash_data>::value, "hash_data has to be a POD type" );
 
 hash_calculator::hash_calculator()
 {
-  constexpr bool is_pod = calc_chunk::check_type<hash_data>();
-  (void)is_pod;  /* to suppress the warning */
-
   std::ifstream method_src_file( "/usr/local/share/task_solver/task_reverse.cpp" );
 
   if( !method_src_file.is_open() )
@@ -105,38 +46,56 @@ hash_calculator::hash_calculator()
   method = tmp.str();
 }
 
-uint64_t hash_calculator::get_hash( const std::string &str )
+uint64_t hash_calculator::get_hash( const std::string& str )
 {
   std::vector<std::shared_ptr<base_calc>> chunks;
-  std::size_t packages_cnt;
+  std::size_t substr_num, substr_size, last_substr_size;
 
   if( !str.size() )
     throw std::string( "the string to calculate a hash for has no data." );
 
-  packages_cnt = std::ceil( str.size() / (m_chunk_size * 1.0) );
+  /* split the string into several substrings and create for each substring a
+   * data chunk which will be used during computation on the server side by
+   * a @c method, create for each substring a calc_chunk object to distribute
+   * the computation */
 
-  BOOST_LOG_TRIVIAL( info ) << "hash_calculator: amount of calculation objects: " << packages_cnt;
+  substr_num = std::ceil( str.size() / (m_chunk_size * 1.0) );
+  substr_size = str.size() < m_chunk_size ? str.size() : m_chunk_size;
+  last_substr_size = str.size() % m_chunk_size;
+  last_substr_size = last_substr_size ?: substr_size;
+
   BOOST_LOG_TRIVIAL( info );
+  BOOST_LOG_TRIVIAL( info ) << "hash_calculator: amount of calculation objects: " << substr_num;
 
-  for( std::size_t i = 0; i < packages_cnt; i++ )
+  for( std::size_t i = 0; i < substr_num; i++ )
   {
-    auto chunk = std::make_shared<calc_chunk>();
-    hash_data_impl data;
+    std::size_t start_idx, str_size, data_chunk_size;
+    std::unique_ptr<char[]> data_chunk;
+    hash_data* data;
+    const char* s;
 
-    const char *s;
-    std::size_t str_size;
-    std::size_t start_idx;
+    /* to avoid memory overhead for the last chunk */
+    if( i == (substr_num - 1) )
+      str_size = last_substr_size;
+    else
+      str_size = substr_size;
+    
+    data_chunk_size = sizeof(hash_data) + str_size;
 
+    data_chunk.reset( new char[data_chunk_size] );
+    data = new( data_chunk.get() ) hash_data;
+     
     s = str.c_str() + i * m_chunk_size;
-    str_size = str.size() < m_chunk_size ? str.size() : m_chunk_size;
     start_idx = i * m_chunk_size;
 
-    data.set_data( s, str_size, start_idx, base );
+    data->str_offset = sizeof(hash_data);
+    data->str_size = str_size;
+    data->start_idx = start_idx;
+    data->base = base;
 
-    chunk->grab_data( data );
-    chunk->set_method_src( method );
+    std::memcpy( data_chunk.get() + data->str_offset, s, data->str_size );
 
-    chunks.push_back( std::move(chunk) );
+    chunks.emplace_back( std::make_shared<calc_chunk>( method, std::move(data_chunk), data_chunk_size ) );
   }
 
   /* make the actual computation... */

@@ -11,6 +11,9 @@
 #include <cstdint>
 #include <atomic>
 
+/* TODO: think how to default initialize an object's id, given that a default value
+ * can be changed */
+
 /* purpose of this class is to generate a unique, per a process, number in a thread-safe manner
  * (from 1 and up to MAX_UNSIGNED_LONG_LONG) */
 class id_generator

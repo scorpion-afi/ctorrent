@@ -43,7 +43,7 @@ public:
   }
 
   static compute_module& get_compute_module( const std::string &task_source );
-  std::shared_ptr<base_calc_result> operator()( const calc_chunk& co, const void* data ) const;
+  std::unique_ptr<base_calc_result> operator()( const calc_chunk& co, const void* data ) const;
 
 private:
   compute_module();
@@ -207,9 +207,9 @@ compute_module& compute_module::get_compute_module( const std::string &task_sour
   return compute_module::loaded_modules.back();
 }
 
-std::shared_ptr<base_calc_result> compute_module::operator()( const calc_chunk& co, const void* data ) const
+std::unique_ptr<base_calc_result> compute_module::operator()( const calc_chunk& co, const void* data ) const
 {
-  typedef std::shared_ptr<base_calc_result> (*compute_fn)(const calc_chunk& co, const void*);
+  using compute_fn = std::unique_ptr<base_calc_result> (*)(const calc_chunk& co, const void*);
 
   BOOST_LOG_TRIVIAL( debug ) << "[debug] use the compute module.";
 
@@ -234,43 +234,28 @@ calc_result::~calc_result()
 }
 
 
-calc_chunk::calc_chunk() : calc_chunk_id(0), /* by default initialize by an invalid value */
-    m_data(nullptr), m_data_size(0)
+calc_chunk::calc_chunk( std::string m_method_src, std::unique_ptr<char[]> data, uint64_t data_size ) :
+    task_src( std::move(m_method_src) ), data(std::move(data)), data_size(data_size),
+    calc_chunk_id(0)
 {
 }
 
-calc_chunk::~calc_chunk()
+std::unique_ptr<base_calc_result> calc_chunk::compute()
 {
-  delete [] m_data;
+  compute_module& module = compute_module::get_compute_module( task_src );
+
+  return module( *this, data.get() );
 }
 
-void calc_chunk::grab_data( const i_chunk_data &data )
+std::ostream& operator<<( std::ostream& stream, const calc_chunk& co )
 {
-  m_data_size = data.get_raw_data_size();
+  stream << "calc_chunk [" << &co << "], calc_chunk_id: " << co.calc_chunk_id <<", m_data:\n";
 
-  m_data = new char[m_data_size];
-  std::memcpy( m_data, data.get_raw_data(), m_data_size );
-}
+  for( std::size_t i = 0; i < co.data_size; i++ )
+    stream << co.data[i];
 
-void calc_chunk::set_method_src( std::string method_src )
-{
-  m_method_src = std::move(method_src);
-}
+  stream << "\n m_data_size: " << co.data_size << "\nm_method_src:\n" << co.task_src;
 
-std::shared_ptr<base_calc_result> calc_chunk::compute()
-{
-  compute_module& module = compute_module::get_compute_module( m_method_src );
-
-  return module( *this, m_data );
-}
-
-std::string calc_chunk::get_info() const
-{
-  std::stringstream str;
-
-  str << "m_data: " << m_data << ", m_data_size: " << m_data_size << "\nm_method_src:\n"
-      << m_method_src;
-
-  return str.str();
+  return stream;
 }
 
