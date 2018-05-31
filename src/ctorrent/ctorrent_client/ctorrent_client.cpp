@@ -12,13 +12,14 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
-#include <cmath>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/ip.h> /* IPv4 */
 
 #include <boost/log/trivial.hpp>
+
+#include "task_distributer.h"
 
 #include "ctorrent_client.h"
 
@@ -114,33 +115,14 @@ ctorrent_client::~ctorrent_client()
 
 void ctorrent_client::send( const std::vector<std::shared_ptr<base_calc>>& objs, bool is_order_important )
 {
-  std::size_t objs_chunk_size;
-  int i = 0;
-
-  if( objs.empty() ) return;
+  if( objs.empty() )
+    throw std::string( "there aren't tasks to send (distribute)." );
 
   is_obj_order_important = is_order_important;
 
-  objs_chunk_size = std::ceil( objs.size() / (remote_servers_list.size() * 1.0) );
+  auto task_distrib = make_task_distributer();
 
-  BOOST_LOG_TRIVIAL( info );
-
-  /* spread objects to calculate between remote calculation servers as equally as possible */
-  for( auto& remote_server : remote_servers_list )
-  {
-    auto begin_it = objs.cbegin() + objs_chunk_size * i++;
-    int sent_obj_cnt = 0;
-
-    for( auto it = begin_it; it != objs.cend() && it < begin_it + objs_chunk_size; ++it, ++sent_obj_cnt )
-      remote_server->serialize_and_send( (*it).get() );
-
-    remote_server->flush_serialized_data();
-
-    BOOST_LOG_TRIVIAL( info ) << "ctorrent_client: " << sent_obj_cnt << " object(s) have been sent"
-        " to the " << remote_server->get_identify_str();
-  }
-
-  BOOST_LOG_TRIVIAL( info );
+  task_distrib->distribute( remote_servers_list, objs );
 }
 
 ctorrent_client::results_t ctorrent_client::receive()

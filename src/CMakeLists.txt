@@ -12,6 +12,8 @@ endif()
 option( DEBUG "To control the debug information generation" OFF )
 option( TESTS "Whether build tests or not" ON )
 
+option( CLIENT_PLAIN_TASK_DISTRIBUTER "Plain tasks' distributer (client side)" ON )
+
 # generate ${PROJECT_BINARY_DIR}/config.h file
 configure_file( ${PROJECT_SOURCE_DIR}/config.h.in ${PROJECT_BINARY_DIR}/config.h )
 

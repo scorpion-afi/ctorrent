@@ -6,4 +6,6 @@
 #cmakedefine ANDROID_BUILD
 #cmakedefine X86_64_BUILD
 
+#cmakedefine CLIENT_PLAIN_TASK_DISTRIBUTER
+
 #endif
