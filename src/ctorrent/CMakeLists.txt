@@ -19,7 +19,7 @@ pkg_check_modules( boost REQUIRED boost-log boost-serialization )
 
 add_library( ${ctorrent} SHARED ${ctorrent_src} )
 
-target_compile_options( ${ctorrent} PUBLIC -std=c++11 -Wall -g3 -O0 -Wno-deprecated-declarations
+target_compile_options( ${ctorrent} PUBLIC -std=c++17 -Wall -g3 -O0 -Wno-deprecated-declarations
                         ${boost_CFLAGS} )
 target_link_libraries( ${ctorrent} ${boost_LDFLAGS} -ldl )
 target_include_directories( ${ctorrent} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"

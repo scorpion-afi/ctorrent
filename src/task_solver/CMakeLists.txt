@@ -6,15 +6,15 @@ pkg_check_modules( boost REQUIRED boost-log )
 
 add_executable( ${task_solver_name} ${task_solver_src} )
 
-target_compile_options( ${task_solver_name} PUBLIC -std=c++11 -Wall -g3 -O0 -Wno-deprecated-declarations
+target_compile_options( ${task_solver_name} PUBLIC -std=c++17 -Wall -g3 -O0 -Wno-deprecated-declarations
                         ${boost_CFLAGS} )
 target_link_libraries( ${task_solver_name} ${boost_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR} -lctorrent ) # libctorrent.so is built as an inner library
-target_include_directories( ${task_solver_name} PUBLIC 
+target_include_directories( ${task_solver_name} PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/ctorrent" 
+                            "${CMAKE_CURRENT_SOURCE_DIR}/ctorrent"
                             "${CMAKE_CURRENT_SOURCE_DIR}/ctorrent/ctorrent_client"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/ctorrent/serializer_deserializer" 
-                          ) 
+                            "${CMAKE_CURRENT_SOURCE_DIR}/ctorrent/serializer_deserializer"
+                          )
 
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
     set_property( TARGET ${task_solver_name} APPEND_STRING PROPERTY COMPILE_OPTIONS "-fPIE" )

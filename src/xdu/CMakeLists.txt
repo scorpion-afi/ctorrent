@@ -6,7 +6,7 @@ pkg_check_modules( boost REQUIRED boost-log )
 
 add_executable( ${xdu_name} ${xdu_src} )
 
-target_compile_options( ${xdu_name} PUBLIC -std=c++11 -Wall -g3 -O0 -Wno-deprecated-declarations
+target_compile_options( ${xdu_name} PUBLIC -std=c++17 -Wall -g3 -O0 -Wno-deprecated-declarations
                         ${boost_CFLAGS} )
 target_link_libraries( ${xdu_name} ${boost_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR} -lctorrent ) # libctorrent.so is built as an inner library
 target_include_directories( ${xdu_name} PUBLIC
