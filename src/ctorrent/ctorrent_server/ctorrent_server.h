@@ -63,8 +63,8 @@ private:
   /* list of connected remote clients */
   std::list<std::shared_ptr<remote_client>> client_list;
 
-  notify_lock_queue<task_wrapper> tasks_queue;      /* a queue to hold clients' tasks after receiving/deserialization */
-  notify_lock_queue<result_wrapper> results_queue;  /* a queue to hold results of clients' tasks after execution */
+  notify_lock_queue<task> tasks_queue;      /* a queue to hold clients' tasks after receiving/deserialization */
+  notify_lock_queue<result> results_queue;  /* a queue to hold results of clients' tasks after execution */
 
   std::vector<std::thread> executor_thread_pool;  /* a pool of threads which execute clients' tasks */
   std::thread sending_thread; /* a thread responsible for sending results and errors to clients */

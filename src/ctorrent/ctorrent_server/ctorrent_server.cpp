@@ -26,6 +26,8 @@
 
 #include "executor_thread.h"
 #include "send_thread.h"
+#include "./computers/base_computer.h"
+
 #include "ctorrent_server.h"
 
 #define REUSE_PORT
@@ -129,6 +131,9 @@ ctorrent_server::ctorrent_server() : tasks_queue(max_queue_size), results_queue(
   close( listen_socket );
 
   start_threads();
+
+  /* register all available computers (tasks' executors) */
+  base_computer::register_computers();
 
   BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: wait for incoming connection requests";
 }
@@ -296,8 +301,7 @@ void ctorrent_server::start_threads()
   std::size_t threads_amount = (std::thread::hardware_concurrency() - 3) >= min_executor_threads_amount ?
       std::thread::hardware_concurrency() - 3 : min_executor_threads_amount;
 
-  threads_amount = 1;
-  BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: launch " << threads_amount << " executor threads";
+  BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: launch " << threads_amount << " executor thread(s)";
 
   /* launch and detach executors threads */
   for( std::size_t i = 0; i < threads_amount; ++i )

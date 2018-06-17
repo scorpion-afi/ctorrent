@@ -40,13 +40,13 @@ struct hash_data
   std::size_t base;
 };
                                                                  
-extern "C" std::shared_ptr<base_calc_result> compute( const calc_chunk& co, const void* data )
+extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
 {
-  const hash_data* _hash_data = static_cast<const hash_data*>( data );
+  const hash_data* _hash_data = static_cast<const hash_data*>( co.get_data() );
   std::vector<uint64_t> coefs( _hash_data->str_size );
-  const char* str = static_cast<const char*>( data ) + _hash_data->str_offset;
+  const char* str = static_cast<const char*>( co.get_data() ) + _hash_data->str_offset;
 
-  std::shared_ptr<calc_result> res = std::make_shared<calc_result>( co );
+  std::unique_ptr<calc_result> res( new calc_result( co ) );
   uint64_t sum = 0;
 
   res->data = reinterpret_cast<char*>( new uint64_t[1] );

@@ -8,49 +8,14 @@
 #ifndef REMOTE_CLIENT_H
 #define REMOTE_CLIENT_H
 
-#include <vector>
 #include <memory>
+#include <string>
 #include <atomic>
 
 #include "ctorrent_protocols.h"
 #include "notify_lock_queue.h"
 #include "remote_connection.h"
-#include "object.h"
-
-class remote_client;
-
-class result_wrapper : public object
-{
-public:
-  result_wrapper( std::weak_ptr<remote_client> cl,
-                    std::shared_ptr<base_calc_result> result  ) :
-                      cl(cl), result(std::move(result)) {}
-
-  std::weak_ptr<remote_client> get_client() const { return cl; }
-  std::shared_ptr<base_calc_result> get_pkg() && { return std::move(result); }
-
-private:
-  std::weak_ptr<remote_client> cl;
-  std::shared_ptr<base_calc_result> result;
-};
-
-class task_wrapper : public object
-{
-public:
-  task_wrapper( std::weak_ptr<remote_client> cl, std::shared_ptr<base_calc> task ) :
-                      cl(cl), task(std::move(task)) {}
-
-  result_wrapper compute()
-  {
-    std::shared_ptr<base_calc_result> res = task->compute();
-
-    return result_wrapper( cl, std::move(res) );
-  }
-
-private:
-  std::weak_ptr<remote_client> cl;
-  std::shared_ptr<base_calc> task;
-};
+#include "task_result_wrappers.h"
 
 /* this class describes connection to a remote client;
  * both receiving and sending threads may use objects of this type concurrently without
@@ -59,7 +24,7 @@ private:
 class remote_client : public remote_connection
 {
 public:
-  remote_client( int socket_fd, notify_lock_queue<task_wrapper>& task_queue, std::string identify_str );
+  remote_client( int socket_fd, notify_lock_queue<task>& task_queue, std::string identify_str );
 
   remote_client( const remote_client& that ) = delete;
   remote_client& operator=( const remote_client& that ) = delete;
@@ -77,7 +42,7 @@ public:
   void serialize_and_send( const base_serialize* obj );
 
 private:
-  notify_lock_queue<task_wrapper>& tasks_queue;  /* a REFERENCE */
+  notify_lock_queue<task>& tasks_queue;  /* a REFERENCE */
 
   /* a weak self reference which is used to provide weak references to this object from
    * task_wrapper objects */

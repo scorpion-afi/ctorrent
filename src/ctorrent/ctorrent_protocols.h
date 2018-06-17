@@ -54,6 +54,12 @@ private:
  *       that object WON'T be serialized several times, unless you turn off the tracking for that type (A) too */
 BOOST_CLASS_TRACKING( base_calc_result, track_never );
 
+/* type of computation model to use */
+enum class comp_type
+{
+  RAW_SRC,  /* a task object contains a task as raw sources and data as an array of bytes */
+};
+
 /* the base abstract class for classes used to present the task to calculate */
 class base_calc : public base_serialize
 {
@@ -61,6 +67,10 @@ public:
   /* make an actual computation;
    * what's going on under hood depends on implementation of this abstract class */
   virtual std::unique_ptr<base_calc_result> compute() = 0;
+
+  /* implementation has to return a specific type of computation model to
+   * choose a computer this task has to be computed on */
+  virtual comp_type get_comp_type() const = 0;
 
 private:
   /* an 'access' class should have an access to our private method 'serialize' */
@@ -78,10 +88,11 @@ private:
 BOOST_CLASS_TRACKING( base_calc, track_never );
 
 
-/*               a calc_chunk-calc_result task-result pair               */
+/*               a calc_chunk-calc_result (raw_src_computer) task-result (a computer) pair               */
 
 
 class calc_chunk;
+class raw_src_computer;
 
 /* the easiest implementation of a base_calc_result class, just controls a C-array of bytes;
  * no copy-semantic (Why, why not? What's a reason to support such a no-trivial copy-semantic?) */
@@ -170,12 +181,13 @@ public:
   /* @param [in] task_scr - source of task to compute
    *   An API of a task to compute:
    *
-   *   [in] chunk - a calc_chunk the method gets called for
-   *   [in] data - data associated with this chunk, the data to process
-   *   extern "C" std::unique_ptr<base_calc_result> compute( const calc_chunk& chunk, const void* data );
+   *   [in] chunk - a calc_chunk the method (compute) gets called for
+   *   extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& chunk );
    *
    *   Note: the function has to be declared with C linkage to allow being found by libdl
-   * @param [in] data - a pointer to a dynamically allocated ARRAY of chars
+   *   Note: the function has to be a thread-safe one (several threads may execute it concurrenlty)
+   *
+   * @param [in] data - a pointer to a dynamically allocated ARRAY of chars (only POD types)
    * @param [in] data_size - a size of @c data array (used as to pass the data over network the size is necessary)
    */
   calc_chunk( std::string task_src, std::unique_ptr<char[]> data, uint64_t data_size );
@@ -187,6 +199,10 @@ public:
   calc_chunk& operator=( calc_chunk&& that ) = default;
 
   std::unique_ptr<base_calc_result> compute() override;
+  comp_type get_comp_type() const override { return comp_type::RAW_SRC; }
+
+  /* get an access to the task's data */
+  const void* get_data() const { return data.get(); }
 
   /* for loging and debug purposes */
   friend std::ostream& operator<<( std::ostream& stream, const calc_chunk& co );
@@ -197,6 +213,10 @@ private:
 
   /* an 'access' class should have an access to our private method 'serialize' */
   friend class boost::serialization::access;
+
+  /* raw_src_computer is a computer for this type of task, it knows how to work with
+   * this task, so it needs an access */
+  friend class raw_src_computer;
 
   /* only boost.serialization library has to be able to use this ctor;
    * after boost.serialization library has created object using this ctor

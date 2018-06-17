@@ -8,7 +8,7 @@
 #ifndef SERVER_SEND_THREAD_H
 #define SERVER_SEND_THREAD_H
 
-#include "remote_client.h"
+#include "task_result_wrappers.h"
 #include "notify_lock_queue.h"
 #include "object.h"
 
@@ -17,7 +17,7 @@
 class send_thread : public object
 {
 public:
-  explicit send_thread( notify_lock_queue<result_wrapper>& results_queue );
+  explicit send_thread( notify_lock_queue<result>& results_queue );
 
   send_thread( const send_thread& that ) = delete;
   send_thread& operator=( const send_thread& that ) = delete;
@@ -28,7 +28,7 @@ public:
   void operator()();
 
 private:
-  notify_lock_queue<result_wrapper>& results_queue; /* a REFERENCE */
+  notify_lock_queue<result>& results_queue; /* a REFERENCE */
 };
 
 #endif /* SERVER_SEND_THREAD_H */

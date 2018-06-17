@@ -12,7 +12,7 @@
 #include "remote_client.h"
 
 /* no duplication of fd, as a remote_connection is an 'fd holder' */
-remote_client::remote_client( int socket_fd, notify_lock_queue<task_wrapper>& tasks_queue,
+remote_client::remote_client( int socket_fd, notify_lock_queue<task>& tasks_queue,
                               std::string identify_str ) :
   remote_connection(socket_fd, std::move(identify_str)), tasks_queue(tasks_queue),
   received_objs_cnt(0), serialized_objs_cnt(0)
@@ -37,7 +37,7 @@ void remote_client::process_deserialized_objs( deserialized_objs_t objs )
   {
     /* at this level we know that type of objects is, at least, base_calc, so we can perform
      * static cast instead of dynamic */
-    task_wrapper task( self_ref, std::static_pointer_cast<base_calc>(elm) );
+    task task( self_ref, std::static_pointer_cast<base_calc>(elm) );
 
     BOOST_LOG_TRIVIAL( debug ) << "remote_client [" << get_id() << "]: queue a task [" << task.get_id() << "] to compute";
 

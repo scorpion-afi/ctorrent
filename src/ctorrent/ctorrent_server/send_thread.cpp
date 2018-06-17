@@ -11,9 +11,11 @@
 
 #include <boost/log/trivial.hpp>
 
+#include "remote_client.h"
+
 #include "send_thread.h"
 
-send_thread::send_thread( notify_lock_queue<result_wrapper>& results_queue )
+send_thread::send_thread( notify_lock_queue<result>& results_queue )
   : results_queue(results_queue)
 {
 }
@@ -31,7 +33,7 @@ void send_thread::operator()()
       BOOST_LOG_TRIVIAL( debug ) << "send_thread [" << get_id() << "]: wait for a result to send...";
 
       /* block if there's no results to consume/send */
-      std::shared_ptr<result_wrapper> result = results_queue.pop();
+      std::shared_ptr<result> result = results_queue.pop();
 
       BOOST_LOG_TRIVIAL( debug ) << "send_thread [" << get_id() << "]: consume a result [" << result->get_id() << "] to send";
 
@@ -47,7 +49,7 @@ void send_thread::operator()()
        * it's not a problem to use the remote_client to write, if a remote client closed connection, we'll
        * be notified about such situation via an exception */
 
-      std::shared_ptr<base_calc_result> base_res = std::move(*result).get_pkg();
+      auto base_res = std::move(*result).get_pkg();
 
       BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: send a result [" << result->get_id() << "] to client " <<
           cl->get_identify_str();
@@ -55,6 +57,14 @@ void send_thread::operator()()
       /* call to a remote_client version of serialize_and_send() which performs the flushing automatically
        * when it's needed */
       cl->serialize_and_send( base_res.get() );
+    }
+    catch( const std::string &err )
+    {
+      BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: an exception: " << err;
+    }
+    catch( const std::exception &exception )
+    {
+      BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: an std exception: " << exception.what();
     }
     catch(...)
     {
