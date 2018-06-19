@@ -216,16 +216,13 @@ std::unique_ptr<base_calc_result> compute_module::operator()( const calc_chunk& 
   return reinterpret_cast<compute_fn>(module_symbol)( co, data );
 }
 
-calc_result::calc_result() : data(nullptr), data_size(0),
-    calc_result_id(0) /* by default initialize by an invalid value */
+calc_result::calc_result() : data(nullptr), data_size(0)
 {
 }
 
-calc_result::calc_result( const calc_chunk& calc_obj ) : calc_result()
+calc_result::calc_result( const calc_chunk& calc_obj ) : base_calc_result(calc_obj),
+    data(nullptr), data_size(0)
 {
-  /* it's not allowed to initialize members in mem-init-list while using a delegate ctor,
-   * 'cause there's an assumption that such a ctor initializes all members */
-  calc_result_id = calc_obj.get_calc_chunk_id();
 }
 
 calc_result::~calc_result()
@@ -235,8 +232,7 @@ calc_result::~calc_result()
 
 
 calc_chunk::calc_chunk( std::string m_method_src, std::unique_ptr<char[]> data, uint64_t data_size ) :
-    task_src( std::move(m_method_src) ), data(std::move(data)), data_size(data_size),
-    calc_chunk_id(0)
+    task_src( std::move(m_method_src) ), data(std::move(data)), data_size(data_size)
 {
 }
 
@@ -249,7 +245,7 @@ std::unique_ptr<base_calc_result> calc_chunk::compute()
 
 std::ostream& operator<<( std::ostream& stream, const calc_chunk& co )
 {
-  stream << "calc_chunk [" << &co << "], calc_chunk_id: " << co.calc_chunk_id <<", m_data:\n";
+  stream << "calc_chunk [" << &co << "], m_data:\n";
 
   for( std::size_t i = 0; i < co.data_size; i++ )
     stream << co.data[i];

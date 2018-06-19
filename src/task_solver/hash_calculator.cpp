@@ -110,7 +110,7 @@ uint64_t hash_calculator::distribute_calculation( const std::vector<std::shared_
 
   ctorrent_client cl;
 
-  cl.send( objs, false );
+  cl.send( objs );
 
   while( received_cnt < objs.size() )
   {

@@ -12,6 +12,7 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -24,7 +25,7 @@
 #include "ctorrent_client.h"
 
 
-ctorrent_client::ctorrent_client()
+ctorrent_client::ctorrent_client() : current_seq_id(0)
 {
   sockaddr_in server_addr;
   int remote_socket;
@@ -119,30 +120,58 @@ void ctorrent_client::send( const std::vector<std::shared_ptr<base_calc>>& objs,
     throw std::string( "there aren't tasks to send (distribute)." );
 
   is_obj_order_important = is_order_important;
+  current_seq_id = 0;
+
+  uint64_t id = current_seq_id;
+  auto generate_id = [&id] ( const std::shared_ptr<base_calc>& task ) { task->set_sequence_id( id++ ); };
+
+  /* provide a continuous ascending order of sequence ids for objects to send (to be able to restore
+   * the order of received objects (replies/results)) */
+  std::for_each( objs.begin(), objs.end(), generate_id );
 
   auto task_distrib = make_task_distributer();
-
   task_distrib->distribute( remote_servers_list, objs );
 }
 
 ctorrent_client::results_t ctorrent_client::receive()
 {
   results_t res;
-  using std::swap;
+
+  auto comp = [] ( const std::shared_ptr<base_serialize>& a, const std::shared_ptr<base_serialize>& b ) -> bool
+  {
+    auto a_calc_res = std::static_pointer_cast<const base_calc_result>(a);
+    auto b_calc_res = std::static_pointer_cast<const base_calc_result>(b);
+
+    return *a_calc_res < *b_calc_res;
+  };
 
   while( 1 )
   {
     /* can block a calling thread if there's no events */
     epoll.handle_events();
 
+    if( received_objects.empty() ) continue;
+
     /* if we got at least one object and order of objects isn't important,
-     * due to receive() API we return this object(s) immediately */
-    if( !is_obj_order_important && !received_objects.empty() )
+     * we return this object(s) immediately */
+    if( !is_obj_order_important )
       break;
+
+    BOOST_LOG_TRIVIAL( error ) << "ctorrent_client: sort a received objects, count: " << received_objects.size();
+    std::sort( received_objects.begin(), received_objects.end(), comp );
+
+    const base_calc_result* front_result = static_cast<const base_calc_result*>( received_objects.front().get() );
+    if( front_result->get_sequence_id() == current_seq_id )
+    {
+      const base_calc_result* back_result = static_cast<const base_calc_result*>( received_objects.back().get() );
+      current_seq_id = back_result->get_sequence_id() + 1;  /* set up a new most-top object to wait for */
+
+      break;
+    }
   }
 
-  if( !is_obj_order_important )
-    swap( res, received_objects );
+  using std::swap;
+  swap( res, received_objects );
 
   return res;
 }

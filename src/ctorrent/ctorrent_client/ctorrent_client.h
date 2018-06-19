@@ -21,10 +21,12 @@
  *
  * it's up to an user of this class to provide tasks to calculate (e.g. divide some big task
  * into several small sub-tasks). After tasks are provided to this class by send() method
- * it's class responsibility to send them to remote XDUs, collect responds and provide them
+ * it's a class responsibility to send them to remote XDUs, collect responds and provide them
  * to the caller via receive() method.
  *
  * doens't support a copy semantic.
+ *
+ * TODO: isn't thread-safe (can't be used for sending/receiving in several threads)
  */
 class ctorrent_client : public ctorrent
 {
@@ -66,6 +68,7 @@ private:
   std::list<std::shared_ptr<remote_server>> remote_servers_list; /* list of servers we've connected to */
   bool is_obj_order_important;
   epoll_event_loop epoll;
+  uint64_t current_seq_id;
 
   remote_server::deserialized_objs_t received_objects;
 };
