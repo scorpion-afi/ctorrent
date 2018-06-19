@@ -29,17 +29,15 @@ enum class comp_type
   RAW_SRC,  /* a task object contains a task as raw sources and data as an array of bytes */
 };
 
-/* the base abstract class for classes used to present the task to calculate */
+/* the base abstract class for classes used to present the task to calculate
+ * derived classes have to provide a template serialize() functions to make own serialization
+ * */
 class base_calc : public base_serialize
 {
 public:
   /* implementation has to return a specific type of computation model to
    * choose a computer this task has to be computed on */
   virtual comp_type get_comp_type() const = 0;
-
-  /* make an actual computation;
-   * what's going on under hood depends on implementation of this abstract class */
-  virtual std::unique_ptr<base_calc_result> compute() = 0;
 
   void set_sequence_id( uint64_t seq_id ) { sequence_id = seq_id; }
   uint64_t get_sequence_id() const { return sequence_id; }
@@ -70,14 +68,14 @@ BOOST_CLASS_TRACKING( base_calc, track_never );
 /* the base class for classes used as result counterparts for classes derived
  * from base_calc class;
  * derived classes have to provide a template serialize() functions to make own serialization;
- * derived classes have to provide a ctors which take a reference to base_calc object;
+ * derived classes have to provide a ctors which takes a const reference to a base_calc object;
  * derived classes have to provide a default ctors (with no parameters) (such a ctor is used
  * only by boost.serialization library, given that derived classes have to declare a boost::access
  * class as a friend to perform serialization, this ctor can be private) */
 class base_calc_result : public base_serialize
 {
 public:
-  base_calc_result( const base_calc& co ) : sequence_id(co.get_sequence_id()) {}
+  explicit base_calc_result( const base_calc& co ) : sequence_id(co.get_sequence_id()) {}
 
   /* way to order base_calc_result objects(packages);
    * the main idea of objects ordering is the next:
@@ -230,7 +228,6 @@ public:
   calc_chunk( calc_chunk&& that ) = default;
   calc_chunk& operator=( calc_chunk&& that ) = default;
 
-  std::unique_ptr<base_calc_result> compute() override;
   comp_type get_comp_type() const override { return comp_type::RAW_SRC; }
 
   /* get an access to the task's data */
