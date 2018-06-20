@@ -1,6 +1,6 @@
 
 set( task_solver_name "task_solver" )
-set( task_solver_src "task_solver/main.cpp" "task_solver/hash_calculator.cpp" "log.cpp" )
+set( task_solver_src "task_solver/main.cpp" "task_solver/hash_calculator.cpp" "task_solver/string_invertor.cpp" "log.cpp" )
 
 pkg_check_modules( boost REQUIRED boost-log )
 
@@ -28,6 +28,6 @@ if( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )
     #install( FILES task_solver/task.cpp DESTINATION /usr/local/share/task_solver )
 elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
     install( TARGETS ${task_solver_name} DESTINATION /usr/local/bin )
-    install( FILES task_solver/task.cpp DESTINATION /usr/local/share/task_solver )
+    install( FILES task_solver/task_hash.cpp DESTINATION /usr/local/share/task_solver )
     install( FILES task_solver/task_reverse.cpp DESTINATION /usr/local/share/task_solver )
 endif( ${CMAKE_SYSTEM_NAME} STREQUAL "Android" )

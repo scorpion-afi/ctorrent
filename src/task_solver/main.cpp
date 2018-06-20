@@ -12,6 +12,7 @@
 #include <exception>
 
 #include "hash_calculator.h"
+#include "string_invertor.h"
 #include "log.h"
 
 int main( void )
@@ -23,14 +24,27 @@ int main( void )
   std::getline( std::cin, str );
 
   BOOST_LOG_TRIVIAL( info );
-  BOOST_LOG_TRIVIAL( info ) << "get started to calculate a hash for the string...";
+  BOOST_LOG_TRIVIAL( info ) << "get started to perform some actions on the string...";
+  BOOST_LOG_TRIVIAL( info );
 
   try
   {
-    hash_calculator hash_calculator;
+    BOOST_LOG_TRIVIAL( info ) << "calculate a hash...";
+    BOOST_LOG_TRIVIAL( info );
+
+    uint64_t hash = hash_calculator().get_hash( str );
 
     BOOST_LOG_TRIVIAL( info );
-    BOOST_LOG_TRIVIAL( info ) << "hash for the: \"" << str << "\": " << hash_calculator.get_hash( str ) << std::endl;
+    BOOST_LOG_TRIVIAL( info ) << "a hash for the: \"" << str << "\": " << hash;
+    BOOST_LOG_TRIVIAL( info );
+
+    BOOST_LOG_TRIVIAL( info ) << "calculate an inversion...";
+    BOOST_LOG_TRIVIAL( info );
+
+    std::string iverted_str = string_invertor().get_invert_str( str );
+
+    BOOST_LOG_TRIVIAL( info );
+    BOOST_LOG_TRIVIAL( info ) << "an inversion for the: \"" << str << "\": " << iverted_str;
   }
   catch( const std::string &err )
   {

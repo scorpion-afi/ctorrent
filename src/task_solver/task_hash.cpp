@@ -33,11 +33,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                                                  
 struct hash_data
 {
-  std::size_t str_offset;
-  std::size_t str_size;
+  uint64_t str_offset;
+  uint64_t str_size;
 
-  std::size_t start_idx;
-  std::size_t base;
+  uint64_t start_idx;
+  uint64_t base;
 };
                                                                  
 extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
@@ -60,7 +60,7 @@ extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
   for( std::size_t i = 0; i < _hash_data->str_size; i++ )
     sum += str[i] * coefs[i];
                                                                  
-  *reinterpret_cast<uint64_t*>(res->data) = 1006/*sum*/;
+  *reinterpret_cast<uint64_t*>(res->data) = sum;
 
   return res;
 }

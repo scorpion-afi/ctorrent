@@ -9,12 +9,11 @@
 #define HASH_CALCULATOR_H
 
 #include <string>
-#include <vector>
-#include <memory>
+#include <cstdint>
 
-class base_calc;
+#include "object.h"
 
-class hash_calculator
+class hash_calculator : public object
 {
 public:
   hash_calculator();
@@ -25,15 +24,11 @@ public:
   uint64_t get_hash( const std::string& str );
 
 private:
-  uint64_t distribute_calculation( const std::vector<std::shared_ptr<base_calc>>& objs );
-
-private:
-  static const std::size_t m_chunk_size = 4;
+  const std::size_t m_chunk_size = 4;
   const std::size_t base = 53;  /* the hash base for the Latin alphabet */
+  const std::string src_path = "/usr/local/share/task_solver/task_hash.cpp";
 
   std::string method;
-
-  static_assert( m_chunk_size != 0, "m_chunk_size should not equal zero" );
 };
 
 #endif /* HASH_CALCULATOR_H */

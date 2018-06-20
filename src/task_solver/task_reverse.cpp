@@ -5,7 +5,6 @@
  *      Author: sergs
  */
 
-#include <vector>
 #include <cstdint>
 #include <memory>
 
@@ -13,11 +12,8 @@
 
 struct reverse_string_data
 {
-  std::size_t str_offset; /* TODO: std::size_t is a bad idea for cross-platform system... */
-  std::size_t str_size;
-
-  std::size_t start_idx;
-  std::size_t base;
+  uint64_t str_offset;
+  uint64_t str_size;
 };
 
 extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
