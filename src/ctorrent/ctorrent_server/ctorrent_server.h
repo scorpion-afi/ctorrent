@@ -55,8 +55,7 @@ private:
 
 private:
   const std::string interface_name = "eth0";  /* TODO: think how can it be automated */
-  std::shared_ptr<std::string> interface_ip_text;
-  in_addr interface_ip;
+  const in_addr interface_ip;
 
   epoll_event_loop epoll;
 

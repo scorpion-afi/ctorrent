@@ -33,7 +33,7 @@ public:
   remote_client& operator=( remote_client&& that ) = default;
 
   /* this function gets called if some objects were deserialized */
-  void process_deserialized_objs( deserialized_objs_t objs ) override;
+  void process_deserialized_objs( deserialized_objs objs ) override;
 
   /* set up a weak self reference to be used for internal purposes */
   void set_self_reference( std::weak_ptr<remote_client> self_ref ) { this->self_ref = self_ref; }

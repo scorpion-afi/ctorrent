@@ -20,14 +20,14 @@ class ctorrent
 {
 protected:
   /* to get correct result use string.c_str() */
-  static std::shared_ptr<std::string> convert_ipv4_from_binary_to_text( in_addr ipv4 )
+  static std::string convert_ipv4_from_binary_to_text( in_addr ipv4 )
   {
     /* man-page for inet_ntop says that at least an INET_ADDRSTRLEN-bytes buffer should
      * be provided, but there's no mentions about whether inet_ntop puts the '\0' symbol
      * as a terminate symbol or not, so make it explicitly */
-    auto address = std::make_shared<std::string>( INET_ADDRSTRLEN, '\0' );
+    std::string address( INET_ADDRSTRLEN, '\0' );
 
-    if( !inet_ntop( AF_INET, &ipv4, &address->front(), address->size() ) )
+    if( !inet_ntop( AF_INET, &ipv4, &address.front(), address.size() ) )
       throw std::string( "an error while trying to get the text representation of an ivp4 address." );
 
     return address;

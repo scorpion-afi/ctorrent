@@ -26,7 +26,7 @@ std::unique_ptr<const base_calc_result> raw_src_computer::compute( const base_ca
    * there's no reason to perform a dynamic cast */
   const calc_chunk& task = static_cast<const calc_chunk&>( obj );
 
-  std::shared_ptr<computation_module> comp_module = computation_module::get_computation_module( task.task_src );
+  auto comp_module = computation_module::get_computation_module( task.task_src );
 
   return (*comp_module)( task );
 }

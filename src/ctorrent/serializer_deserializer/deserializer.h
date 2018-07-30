@@ -36,6 +36,8 @@
 class deserializer : public serializer_deserializer
 {
 public:
+  using deserialized_objs = std::vector<std::unique_ptr<const base_serialize>>;
+
   deserializer();
 
   deserializer( const deserializer& that ) = delete;
@@ -68,7 +70,7 @@ public:
   bool deserialize( std::size_t num_of_read_bytes );
 
   /* retrieve deserialized objects and make preparation for the next deserialization */
-  std::vector<std::shared_ptr<base_serialize>> get_deserialized_objs();
+  deserialized_objs get_deserialized_objs();
 
 private:
   void reset();
@@ -81,7 +83,7 @@ private:
    * so to make a serializer a movable and swappable type we use a pointer */
   std::unique_ptr<boost::archive::binary_iarchive> raw_ar;
 
-  std::vector<std::shared_ptr<base_serialize>> deserialized_objs;
+  deserialized_objs objs;
   std::array<char, client_package_size> raw_data;
   bool deserialization_finished;
   bool is_ctrl_obj_caught;

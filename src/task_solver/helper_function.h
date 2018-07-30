@@ -57,29 +57,28 @@ void split_string( const std::string& str, std::size_t chunk_size, func f )
 }
 
 /* this template function performs a distributed calculation of @c tasks tasks
- * a @c f functional object gets called for each task' result
+ * a @c f functional object gets called for each tasks' result
  *
  * order_important - whether an order of task's result is important
  *
  * functional object @c f has the next signature:
- *  void (*)( const std::shared_ptr<base_serialize>& result )
- *   a @c result result is guaranteed to be at least base_calc_result based, a real type depends on a caller */
+ *  void (*)( std::unique_ptr<const base_calc_result> result )
+ *   a @c result should be casted to a proper type, depend on a task's type */
 template< class func >
 void distribute_calculation( const std::vector<std::shared_ptr<base_calc>>& tasks, func f, bool order_important = true )
 {
-  std::size_t received_cnt = 0;
-
   ctorrent_client cl;
+  std::size_t received_cnt = 0;
 
   cl.send( tasks, order_important );
 
   while( received_cnt < tasks.size() )
   {
-    /* ctorrent_client library returns base_serialize objects and it's our task to cast them to proper
-     * type, ctorrent_client library guarantees that result objects are at least base_calc_result based */
-    ctorrent_client::results_t results = cl.receive();
+    ctorrent_client::results results = cl.receive();
 
-    std::for_each( results.cbegin(), results.cend(), f );
+    /* steal data from results, yes, but results is going to be destroyed, so don't worry */
+    for( auto& res: results )
+      f( std::move(res) );
 
     received_cnt += results.size();
   }

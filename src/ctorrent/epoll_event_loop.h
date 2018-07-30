@@ -8,6 +8,7 @@
 #ifndef EPOLL_EVENT_LOOP_H
 #define EPOLL_EVENT_LOOP_H
 
+#include <unordered_map>
 #include <map>
 #include <functional>
 #include <memory>
@@ -83,7 +84,7 @@ private:
 
 private:
   int epoll_fd;
-  std::map<uint64_t, std::shared_ptr<event_source>> id_to_ev_src_map; /* manages the event_sources' memory */
+  std::unordered_map<uint64_t, std::shared_ptr<event_source>> id_to_ev_src_map; /* manages the event_sources' memory */
 
   static const std::map<uint32_t, std::string> event_type_to_string_map; /* to map epoll.h constants to strings */
 };

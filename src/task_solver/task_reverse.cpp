@@ -21,7 +21,7 @@ extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
   const reverse_string_data* reverse_data = static_cast<const reverse_string_data*>( co.get_data() );
   const char* str = static_cast<const char*>( co.get_data() ) + reverse_data->str_offset;
 
-  std::unique_ptr<calc_result> res( new calc_result( co ) );
+  auto res = std::make_unique<calc_result>( co );
 
   res->data = new char[reverse_data->str_size];
   res->data_size = reverse_data->str_size;

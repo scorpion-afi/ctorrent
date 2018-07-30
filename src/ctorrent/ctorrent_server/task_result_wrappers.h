@@ -24,15 +24,15 @@ class result : public object
 {
 public:
   result( std::weak_ptr<remote_client> cl,
-                    std::shared_ptr<const base_calc_result> result ) :
+                    std::unique_ptr<const base_calc_result> result ) :
                       cl(cl), res(std::move(result)) {}
 
   std::weak_ptr<remote_client> get_client() const { return cl; }
-  std::shared_ptr<const base_calc_result> get_pkg() && { return std::move(res); }
+  operator const base_calc_result*() const { return res.get(); }
 
 private:
   std::weak_ptr<remote_client> cl;
-  std::shared_ptr<const base_calc_result> res;
+  std::unique_ptr<const base_calc_result> res;
 };
 
 /* it's a wrapper over a base_calc object;
@@ -41,7 +41,7 @@ private:
 class task : public object
 {
 public:
-  task( std::weak_ptr<remote_client> cl, std::shared_ptr<const base_calc> task ) :
+  task( std::weak_ptr<remote_client> cl, std::unique_ptr<const base_calc> task ) :
                       cl(cl), tsk(std::move(task)),
                       computer(base_computer::get_computer(tsk->get_comp_type()))
   {
@@ -59,7 +59,7 @@ public:
 
 private:
   std::weak_ptr<remote_client> cl;
-  std::shared_ptr<const base_calc> tsk;
+  std::unique_ptr<const base_calc> tsk;
   std::shared_ptr<base_computer> computer;
 };
 

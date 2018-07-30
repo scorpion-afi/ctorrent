@@ -34,7 +34,7 @@ regular_file::regular_file( const std::string& file_name, bool adopt, std::ios::
 
 regular_file::~regular_file()
 {
-  //std::remove( file_name.c_str() );
+  std::remove( file_name.c_str() );
 }
 
 regular_file& regular_file::operator<<( const std::string& str )

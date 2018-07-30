@@ -78,11 +78,10 @@ std::string string_invertor::get_invert_str( const std::string& str )
   /* compute... */
 
   std::string inverted_str;
-  auto handle_results = [&inverted_str] ( const std::shared_ptr<base_serialize>& result )
+  auto handle_results = [&inverted_str] ( std::unique_ptr<const base_calc_result> result )
   {
-    /* distribute_calculation guarantees that a result is, at least, a base_calc_result and
-     * we know that we sent calc_chunk objects which have calc_result objects as results we
-     * can make static_cast instead of dynamic_cast */
+    /* we know that we sent calc_chunk objects which have calc_result objects as results,
+     * so we can make a static_cast instead of a dynamic_cast */
     auto res = static_cast<const calc_result*>(result.get());
 
     /* we have to perform a left-side lexicographic add */

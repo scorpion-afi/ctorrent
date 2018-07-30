@@ -51,7 +51,7 @@ std::string serialize( const std::vector<dumb>& objs )
   return ser.get_serialized_objs();
 }
 
-std::vector<std::shared_ptr<base_serialize>> deserialize( const std::string& serialized_data )
+deserializer::deserialized_objs deserialize( const std::string& serialized_data )
 {
   deserializer deser;
   std::size_t size;
@@ -64,16 +64,16 @@ std::vector<std::shared_ptr<base_serialize>> deserialize( const std::string& ser
   if( deser.deserialize( size ) )
     return deser.get_deserialized_objs();
 
-  return std::vector<std::shared_ptr<base_serialize>>();
+  return deserializer::deserialized_objs();
 }
 
 /* just for fun... */
 class kyky
 {
 public:
-  std::size_t operator()( std::size_t val, const std::shared_ptr<base_serialize>& obj )
+  std::size_t operator()( std::size_t val, const std::unique_ptr<const base_serialize>& obj )
   {
-    return val + static_cast<dumb*>(obj.get())->a;
+    return val + static_cast<const dumb*>(obj.get())->a;
   }
 };
 
@@ -81,7 +81,7 @@ int main( void )
 {
   std::vector<dumb> dump_array{ 1, 2, 3, 4, 5 };
   std::string serialized_data;
-  std::vector<std::shared_ptr<base_serialize>> deserialized_objs;
+  deserializer::deserialized_objs deserialized_objs;
 
   serialized_data = serialize( dump_array );
   deserialized_objs = deserialize( serialized_data );
@@ -89,8 +89,3 @@ int main( void )
   std::size_t res = std::accumulate( deserialized_objs.cbegin(), deserialized_objs.cend(), 0l, kyky() );
   assert( res == 15 );
 }
-
-
-
-
-

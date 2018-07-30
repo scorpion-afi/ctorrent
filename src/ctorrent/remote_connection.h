@@ -35,7 +35,7 @@
  *       (by using register_type_for_serialization()   to register type to send,
  *                 register_type_for_deserialization() to register type to get)
  *
- *       when you register a types for a serialization on one side you have to register
+ *       when you register types for a serialization on one side you have to register
  *       the same types for the deserialization on the other side in the SAME order
  *       ('cause boost.serialize library associates integers with types you register and
  *       use those integers (on the deserialize side) to chose a type to deserialize to,
@@ -44,7 +44,7 @@
 class remote_connection : public object
 {
 public:
-  using deserialized_objs_t = std::vector<std::shared_ptr<base_serialize>>;
+  using deserialized_objs = deserializer::deserialized_objs;
 
   /* socket_fd - a socket to wrap
    * identify_str - some string used to identify this remote connection for debug purposes */
@@ -82,9 +82,9 @@ public:
    * a derived class to perform some processing */
   void consume_data_from_remote();
 
-  /* a class has no enough information to process deserialized objects; */
+  /* the class has no enough information to process deserialized objects; */
   /* this function gets called if some objects were deserialized */
-  virtual void process_deserialized_objs( deserialized_objs_t objs ) = 0;
+  virtual void process_deserialized_objs( deserialized_objs objs ) = 0;
 
   /* serializes and maybe sends serialized obj(s) to the remote side ('socket_fd'),
    * whether actual sending happens depends on internal state, if a caller needs to

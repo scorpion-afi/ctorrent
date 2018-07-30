@@ -84,7 +84,7 @@ bool deserializer::deserialize( std::size_t num_of_read_bytes )
       BOOST_LOG_TRIVIAL( debug ) << " deserialize an object";
       *raw_ar >> so; /* TODO: how to get if the operation was successful? */
 
-      deserialized_objs.push_back( std::shared_ptr<base_serialize>(so) );
+      objs.emplace_back( so );
     }
 
     deserialization_finished = true;
@@ -95,15 +95,15 @@ bool deserializer::deserialize( std::size_t num_of_read_bytes )
   return false;
 }
 
-std::vector<std::shared_ptr<base_serialize>> deserializer::get_deserialized_objs()
+deserializer::deserialized_objs deserializer::get_deserialized_objs()
 {
-  std::vector<std::shared_ptr<base_serialize>> tmp;
+  deserialized_objs tmp;
 
   if( !deserialization_finished )
     return tmp;
 
   using std::swap;
-  swap( tmp, deserialized_objs ); /* tmp has to be empty */
+  swap( tmp, objs ); /* tmp has to be empty */
 
   reset();
 

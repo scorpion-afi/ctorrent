@@ -35,7 +35,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
 
   BOOST_LOG_TRIVIAL( debug ) << "ctorrent_client: servers list:";
   for( auto& server : servers_list )
-    BOOST_LOG_TRIVIAL( debug ) << " " << convert_ipv4_from_binary_to_text( server )->c_str();
+    BOOST_LOG_TRIVIAL( debug ) << " " << convert_ipv4_from_binary_to_text( server ).c_str();
 
   for( auto& server : servers_list )
   {
@@ -78,7 +78,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
     std::memset( &cl_socket_addr, 0, sizeof(cl_socket_addr) );
     getpeername( remote_socket, reinterpret_cast<sockaddr*>(&cl_socket_addr), &addr_len );
 
-    tmp << "remote server (" << convert_ipv4_from_binary_to_text( cl_socket_addr.sin_addr )->c_str() << ":"
+    tmp << "remote server (" << convert_ipv4_from_binary_to_text( cl_socket_addr.sin_addr ).c_str() << ":"
         << ntohs( cl_socket_addr.sin_port ) <<  ")";
 
     if( addr_len > sizeof(cl_socket_addr) )
@@ -133,17 +133,9 @@ void ctorrent_client::send( const std::vector<std::shared_ptr<base_calc>>& objs,
   task_distrib->distribute( remote_servers_list, objs );
 }
 
-ctorrent_client::results_t ctorrent_client::receive()
+ctorrent_client::results ctorrent_client::receive()
 {
-  results_t res;
-
-  auto comp = [] ( const std::shared_ptr<base_serialize>& a, const std::shared_ptr<base_serialize>& b ) -> bool
-  {
-    auto a_calc_res = std::static_pointer_cast<const base_calc_result>(a);
-    auto b_calc_res = std::static_pointer_cast<const base_calc_result>(b);
-
-    return *a_calc_res < *b_calc_res;
-  };
+  results res;
 
   while( 1 )
   {
@@ -158,12 +150,12 @@ ctorrent_client::results_t ctorrent_client::receive()
       break;
 
     BOOST_LOG_TRIVIAL( error ) << "ctorrent_client: sort a received objects, count: " << received_objects.size();
-    std::sort( received_objects.begin(), received_objects.end(), comp );
+    received_objects.sort();
 
-    const base_calc_result* front_result = static_cast<const base_calc_result*>( received_objects.front().get() );
+    const auto front_result = received_objects.front().get();
     if( front_result->get_sequence_id() == current_seq_id )
     {
-      const base_calc_result* back_result = static_cast<const base_calc_result*>( received_objects.back().get() );
+      const auto back_result = received_objects.back().get();
       current_seq_id = back_result->get_sequence_id() + 1;  /* set up a new most-top object to wait for */
 
       break;

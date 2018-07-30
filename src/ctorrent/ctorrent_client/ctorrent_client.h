@@ -31,8 +31,7 @@
 class ctorrent_client : public ctorrent
 {
 public:
-  /* TODO: should we expose base_serialize or not? */
-  using results_t = remote_server::deserialized_objs_t;
+  using results = remote_server::results;
 
   ctorrent_client();
   ~ctorrent_client();
@@ -57,9 +56,8 @@ public:
 
   /* will block till at least one item can be returned;
    * an exception is thrown in a case of an error;
-   * a caller has to call this function till it gets all items (like with a read() syscall);
-   * the library guarantees that all received objects are at least a base_calc_result based */
-  results_t receive();
+   * a caller has to call this function till it gets all items (like with a read() syscall) */
+  results receive();
 
 private:
   std::list<in_addr> get_servers_list();
@@ -70,7 +68,7 @@ private:
   epoll_event_loop epoll;
   uint64_t current_seq_id;
 
-  remote_server::deserialized_objs_t received_objects;
+  results received_objects;
 };
 
 #endif /* CTORRENT_CLIENT_H */

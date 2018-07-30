@@ -33,15 +33,10 @@
 #define REUSE_PORT
 
 
-ctorrent_server::ctorrent_server() : tasks_queue(max_queue_size), results_queue(max_queue_size)
+ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( interface_name )),
+  tasks_queue(max_queue_size), results_queue(max_queue_size)
 {
-
-  std::vector<int> vi;
-
-  std::list<int> li;
-
-  vi.insert( vi.begin(), li.begin(), li.end() );
-
+  std::string interface_ip_text;
   sockaddr_in s_addr;
   int listen_socket;
   int ret;
@@ -51,10 +46,8 @@ ctorrent_server::ctorrent_server() : tasks_queue(max_queue_size), results_queue(
   throw std::string( "ifaddrs.h functionality currently isn't implemented." );
 #endif
 
-  interface_ip = get_interface_ipv4_address( interface_name );
   interface_ip_text = convert_ipv4_from_binary_to_text( interface_ip );
-
-  BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: ip address for the " << interface_name << " interface: " << interface_ip_text->c_str();
+  BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: ip address for the " << interface_name << " interface: " << interface_ip_text.c_str();
 
   /* create a stream-based, reliable, bidirectional socket within AF_INET protocols family */
   listen_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
@@ -105,7 +98,7 @@ ctorrent_server::ctorrent_server() : tasks_queue(max_queue_size), results_queue(
   }
 
   BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: the socket (fd: " << listen_socket << ") has been bound to the local socket address: "
-      << interface_ip_text->c_str() << ":" << port_number;
+      << interface_ip_text.c_str() << ":" << port_number;
 
   /* mark socket as a passive socket so it can be used to accept incoming connection requests, via accept()
    * socket is still bound to socket address I specified above */
@@ -158,7 +151,6 @@ void ctorrent_server::handle_events()
 in_addr ctorrent_server::get_interface_ipv4_address( const std::string& if_name )
 {
   in_addr host_ip = {0};
-  //host_ip.s_addr = 0;
 
 #ifdef X86_64_BUILD
   struct ifaddrs *if_address_list, *ifa;
@@ -243,7 +235,7 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
     throw std::string( "an error while trying to accept client request." );
   }
 
-  tmp << "remote client (" << convert_ipv4_from_binary_to_text( peer_addr.sin_addr )->c_str() << ":"
+  tmp << "remote client (" << convert_ipv4_from_binary_to_text( peer_addr.sin_addr ).c_str() << ":"
       << ntohs( peer_addr.sin_port ) <<  ")";
 
   if( addr_len > sizeof(peer_addr) )

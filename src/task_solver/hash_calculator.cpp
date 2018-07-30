@@ -86,11 +86,10 @@ uint64_t hash_calculator::get_hash( const std::string& str )
   /* compute... */
 
   uint64_t hash = 0;
-  auto handle_results = [&hash] ( const std::shared_ptr<base_serialize>& result )
+  auto handle_results = [&hash] ( std::unique_ptr<const base_calc_result> result )
   {
-    /* distribute_calculation guarantees that a result is, at least, a base_calc_result and
-     * we know that we sent calc_chunk objects which have calc_result objects as results we
-     * can make static_cast instead of dynamic_cast */
+    /* we know that we sent calc_chunk objects which have calc_result objects as results,
+     * so we can make a static_cast instead of a dynamic_cast */
     auto res = static_cast<const calc_result*>(result.get());
 
     hash += *reinterpret_cast<uint64_t*>(res->data);

@@ -28,7 +28,10 @@ regular_file module_compiler_linux::compile( const regular_file& src_file ) cons
   /* object will be created by an external compiler (gcc), so we need just to adopt */
   regular_file module_file( module_file_name, true );
 
-  child_pid = fork(); /* TODO: how much threads a new process does have? */
+  /* TODO: to guarantee a consistent of memory covered by mutexs owned by this library,
+   *       only async-signal-safe calls may be performed between fork() and execle(),
+   *       but what about std::string() is it a such one? */
+  child_pid = fork();
   if( child_pid < 0 )
     throw std::string( "a fail while 'fork' syscall." );
 

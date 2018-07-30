@@ -32,7 +32,7 @@ void executor_thread::operator()()
       BOOST_LOG_TRIVIAL( debug ) << "executor_thread [" << get_id() << "]: wait for a task to compute";
 
       /* block if there's no task to consume/compute */
-      std::shared_ptr<task> task = tasks_queue.pop();
+      auto task = tasks_queue.pop();
 
       BOOST_LOG_TRIVIAL( info ) << "executor_thread [" << get_id() << "]: compute a task [" << task->get_id() << "]";
 

@@ -22,22 +22,25 @@ remote_client::remote_client( int socket_fd, notify_lock_queue<task>& tasks_queu
   register_type_for_deserialization<calc_chunk>();
 }
 
-void remote_client::process_deserialized_objs( deserialized_objs_t objs )
+void remote_client::process_deserialized_objs( deserialized_objs objs )
 {
   BOOST_LOG_TRIVIAL( info ) << "remote_client [" << get_id() << "]: " << objs.size() << " object(s) have been received"
       " from the " << get_identify_str();
 
-  /* TODO: handle non-task objects */
+  /* TODO: some way to distinguish different types of packages (control, error, task, result...) should be here,
+   *       now it's considered that all packages are task-packages, so they can be casted to a proper type
+   *       without any logic */
 
   received_objs_cnt += objs.size();  /* amount of objects which expect replies to be sent back */
 
-  /* put deserialized objects (tasks to calculate) to the tasks queue;
+  /* put task-packages to the tasks queue;
    * the tasks queue is shared between several remote_clients */
   for( auto& elm : objs )
   {
     /* at this level we know that type of objects is, at least, base_calc, so we can perform
-     * static cast instead of dynamic */
-    task task( self_ref, std::static_pointer_cast<base_calc>(elm) );
+     * a static cast instead of a dynamic one */
+    std::unique_ptr<const base_calc> bs_calc( static_cast<const base_calc*>(elm.release()) );
+    task task( self_ref, std::move(bs_calc) );
 
     BOOST_LOG_TRIVIAL( debug ) << "remote_client [" << get_id() << "]: queue a task [" << task.get_id() << "] to compute";
 

@@ -39,7 +39,7 @@ public:
 
   void push( T elm );
 
-  std::shared_ptr<T> pop();
+  std::unique_ptr<T> pop();
 
 private:
   mutable std::mutex mtx;
@@ -107,7 +107,7 @@ void notify_lock_queue<T>::push( T elm )
 }
 
 template <class T>
-std::shared_ptr<T> notify_lock_queue<T>::pop()
+std::unique_ptr<T> notify_lock_queue<T>::pop()
 {
   std::unique_lock<std::mutex> lk( mtx );
 
@@ -115,7 +115,7 @@ std::shared_ptr<T> notify_lock_queue<T>::pop()
   cv.wait( lk, [this] { return queue.size() != 0; } );
 
   /* TODO: check why a move ctor isn't called implicitly (for type which provides both copy and move ctors)? */
-  auto tmp = std::make_shared<T>( std::move(queue.front()) ); /* due to recommendation about an exception-safe code */
+  auto tmp = std::make_unique<T>( std::move(queue.front()) ); /* due to recommendation about an exception-safe code */
   queue.pop();
 
   lk.unlock();  /* it's desirable to unlock a mutex before make a notification */
