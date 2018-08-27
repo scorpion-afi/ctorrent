@@ -43,18 +43,13 @@ void executor_thread::operator()()
 
       results_queue.push( std::move(res) );
     }
-    catch( const std::string &err )
+    catch( const std::system_error& ex )
     {
-      BOOST_LOG_TRIVIAL( info ) << "executor_thread [" << get_id() << "]: an exception: " << err;
+      BOOST_LOG_TRIVIAL( error ) << "executor_thread [" << get_id() << "]: " << ex.what() << " (" << ex.code().value() << ")";
     }
-    catch( const std::exception &exception )
+    catch( const std::exception& ex )
     {
-      BOOST_LOG_TRIVIAL( info ) << "executor_thread [" << get_id() << "]: an std exception: " << exception.what();
-    }
-    catch(...)
-    {
-      BOOST_LOG_TRIVIAL( error ) << "executor_thread [" << get_id() << "]: some exception happened";
-      /* TODO: delay till it's time to sort out with exceptions handling */
+      BOOST_LOG_TRIVIAL( error ) << "executor_thread [" << get_id() << "]: " << ex.what();
     }
   }
 }

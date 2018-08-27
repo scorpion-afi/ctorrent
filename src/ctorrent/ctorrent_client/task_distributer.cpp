@@ -23,7 +23,7 @@ std::unique_ptr<task_distributer> make_task_distributer()
 #endif
 
   if( !ptr )
-    throw std::string( "no chosen task distributer (client side)." );
+    throw std::runtime_error( "no chosen task distributer." );
 
   return ptr;
 }

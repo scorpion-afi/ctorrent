@@ -20,10 +20,12 @@ public:
   std::string get_invert_str( const std::string& str );
 
 private:
-  const std::size_t m_chunk_size = 4;
+  static const std::size_t m_chunk_size = 4;
   const std::string src_path = "/usr/local/share/task_solver/task_reverse.cpp";
 
   std::string method;
+
+  static_assert( m_chunk_size != 0, "m_chunk_size has to not be equal zero" );
 };
 
 #endif /* STRING_INVERTOR_H */

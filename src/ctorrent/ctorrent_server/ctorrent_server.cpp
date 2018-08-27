@@ -38,12 +38,12 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
 {
   std::string interface_ip_text;
   sockaddr_in s_addr;
-  int listen_socket;
+  int listen_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   int ret;
 
   /* look https://github.com/morristech/android-ifaddrs for ifaddrs.h implementation for Android */
 #ifdef ANDROID_BUILD
-  throw std::string( "ifaddrs.h functionality currently isn't implemented." );
+  throw std::runtime_error( "ifaddrs.h functionality currently isn't implemented." );
 #endif
 
   interface_ip_text = convert_ipv4_from_binary_to_text( interface_ip );
@@ -52,29 +52,14 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
   /* create a stream-based, reliable, bidirectional socket within AF_INET protocols family */
   listen_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
   if( listen_socket < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] socket(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-
-    throw std::string( "an error while trying to create a socket." );
-  }
+    throw std::system_error( errno, std::system_category(), "an error while trying to create a socket" );
 
 #ifdef REUSE_PORT
   int reuse = 1;
   ret = setsockopt( listen_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse) );
   if( ret < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] setsockopt(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-
-    throw std::string( "an error while trying to prepare a socket to share the same port with other sockets." );
-  }
+    throw std::system_error( errno, std::system_category(),
+                             "an error while trying to prepare a socket to share the same port with other sockets" );
 #endif
 
   std::memset( &s_addr, 0, sizeof(s_addr) );
@@ -86,16 +71,7 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
   /* bind socket to some local socket address */
   ret = bind( listen_socket, reinterpret_cast<sockaddr*>(&s_addr), sizeof(s_addr) );
   if( ret < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] bind(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-
-    close( listen_socket );
-    throw std::string( "an error while trying to bind address." );
-  }
+    throw std::system_error( errno, std::system_category(), "an error while trying to bind an address" );
 
   BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: the socket (fd: " << listen_socket << ") has been bound to the local socket address: "
       << interface_ip_text.c_str() << ":" << port_number;
@@ -104,14 +80,7 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
    * socket is still bound to socket address I specified above */
   ret = listen( listen_socket, 2 );
   if( ret < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] listen(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-    throw std::string( "an error while trying to mark a socket as a listening socket." );
-  }
+    throw std::system_error( errno, std::system_category(), "an error while trying to mark a socket as a listening socket" );
 
   BOOST_LOG_TRIVIAL( debug ) << "ctorrent_server: the socket (fd: " << listen_socket << ") has been marked as passive (listening) socket";
 
@@ -160,15 +129,7 @@ in_addr ctorrent_server::get_interface_ipv4_address( const std::string& if_name 
 
   ret = getifaddrs( &if_address_list );
   if( ret < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] getifaddrs(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-
-    throw std::string( "an error while trying to get interfaces addresses." );
-  }
+    throw std::system_error( errno, std::system_category(), "an error while trying to get an interfaces addresses" );
 
   BOOST_LOG_TRIVIAL( debug ) << "ctorrent_server: interfaces:";
 
@@ -187,19 +148,21 @@ in_addr ctorrent_server::get_interface_ipv4_address( const std::string& if_name 
                    nullptr, 0, NI_NUMERICHOST );
       if( ret < 0 )
       {
-        BOOST_LOG_TRIVIAL( error ) << "[server] [error] getnameinfo(): " <<  gai_strerror( ret ) << std::endl;
+        int err = errno;
+        BOOST_LOG_TRIVIAL( error ) << "ctorrent_server: getnameinfo(): " <<  gai_strerror( ret ) << std::endl;
 
         freeifaddrs( if_address_list );
-        throw std::string( "an error while trying to get hostname from socket address." );
+        throw std::system_error( err, std::system_category(), "an error while trying to get a hostname from a socket address" );
       }
 
       ret = inet_pton( AF_INET, host, &host_ip );
       if( ret != 1 )
       {
-        BOOST_LOG_TRIVIAL( error ) << "[server] [error] inet_pton(): " << ret << std::endl;
+        int err = errno;
+        BOOST_LOG_TRIVIAL( error ) << "ctorrent_server: inet_pton(): " << ret << std::endl;
 
         freeifaddrs( if_address_list );
-        throw std::string( "an error while trying to get binary representation of ipv4 address." );
+        throw std::system_error( err, std::system_category(), "an error while trying to get a binary representation of an ipv4 address" );
       }
 
       break;
@@ -216,7 +179,7 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
 {
   sockaddr_in peer_addr;
   socklen_t addr_len;
-  int peer_socket;
+  int peer_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   std::stringstream tmp;
 
   addr_len = sizeof(peer_addr);
@@ -226,14 +189,7 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
    * return accepted socket that is in connected (to the remote peer) state */
   peer_socket = accept4( listen_socket, reinterpret_cast<sockaddr*>(&peer_addr), &addr_len, SOCK_CLOEXEC );
   if( peer_socket < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] accept4(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-    throw std::string( "an error while trying to accept client request." );
-  }
+    throw std::system_error( errno, std::system_category(), "an error while trying to accept a client request" );
 
   tmp << "remote client (" << convert_ipv4_from_binary_to_text( peer_addr.sin_addr ).c_str() << ":"
       << ntohs( peer_addr.sin_port ) <<  ")";
@@ -306,5 +262,5 @@ void ctorrent_server::start_threads()
 
   BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: launch a sending thread";
   sending_thread = std::thread( send_thread( results_queue ) );
-
+  sending_thread.detach();
 }

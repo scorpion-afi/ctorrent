@@ -28,7 +28,7 @@
 ctorrent_client::ctorrent_client() : current_seq_id(0)
 {
   sockaddr_in server_addr;
-  int remote_socket;
+  int remote_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   int ret;
 
   std::list<in_addr> servers_list = get_servers_list();
@@ -41,14 +41,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
   {
     remote_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
     if( remote_socket < 0 )
-    {
-      int err = errno;
-      std::array<char, 256> buf;
-
-      BOOST_LOG_TRIVIAL( error ) << "ctorrent_client: socket(): " <<
-          strerror_r( err, &buf.front(), buf.size() );
-      throw std::string( "an error while trying to create a AF_INET socket." );
-    }
+      throw std::system_error( errno, std::system_category(), "an error while trying to create a socket" );
 
     std::memset( &server_addr, 0, sizeof(server_addr) );
 
@@ -68,7 +61,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
           strerror_r( err, &buf.front(), buf.size() );
 
       close( remote_socket );
-      continue; /* just go to the next server if current isn't accessible */
+      continue; /* just go to the next server if a current one isn't accessible */
     }
 
     sockaddr_in cl_socket_addr;
@@ -82,7 +75,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
         << ntohs( cl_socket_addr.sin_port ) <<  ")";
 
     if( addr_len > sizeof(cl_socket_addr) )
-      BOOST_LOG_TRIVIAL( info ) << "[client] [warning] a peer socket address has been truncated.\n";
+      BOOST_LOG_TRIVIAL( info ) << "ctorrent_client: a peer socket address has been truncated.\n";
     else
       BOOST_LOG_TRIVIAL( info ) << "ctorrent_client: connection to the server has been established -- " << tmp.str();
 
@@ -106,7 +99,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
   BOOST_LOG_TRIVIAL( debug ) << "ctorrent_client: amount of connected servers: " << remote_servers_list.size();
 
   if( remote_servers_list.size() < 1 ) /* TODO: what an edge should be? */
-    throw std::string( "there's no connected servers." );
+    throw std::runtime_error( "there's no connected servers." );
 }
 
 ctorrent_client::~ctorrent_client()
@@ -117,7 +110,7 @@ ctorrent_client::~ctorrent_client()
 void ctorrent_client::send( const std::vector<std::shared_ptr<base_calc>>& objs, bool is_order_important )
 {
   if( objs.empty() )
-    throw std::string( "there aren't tasks to send (distribute)." );
+    throw std::domain_error( "there's no tasks to send (distribute)." );
 
   is_obj_order_important = is_order_important;
   current_seq_id = 0;
@@ -149,8 +142,14 @@ ctorrent_client::results ctorrent_client::receive()
     if( !is_obj_order_important )
       break;
 
-    BOOST_LOG_TRIVIAL( error ) << "ctorrent_client: sort a received objects, count: " << received_objects.size();
+    for( const auto& elm : received_objects )
+      BOOST_LOG_TRIVIAL( debug ) << elm.get()->get_sequence_id();
+
+    BOOST_LOG_TRIVIAL( debug ) << "ctorrent_client: sort a received objects, count: " << received_objects.size();
     received_objects.sort();
+
+    for( const auto& elm : received_objects )
+      BOOST_LOG_TRIVIAL( debug ) << elm.get()->get_sequence_id();
 
     const auto front_result = received_objects.front().get();
     if( front_result->get_sequence_id() == current_seq_id )
@@ -169,7 +168,7 @@ ctorrent_client::results ctorrent_client::receive()
 }
 
 /* make up a list of ctorrent servers from txt file
- * TODO: think about some broadcast protocol to spread list of ctorrent servers
+ * TODO: think about some broadcast protocol to spread a list of ctorrent servers
  *       between servers and clients */
 std::list<in_addr> ctorrent_client::get_servers_list()
 {
@@ -177,10 +176,11 @@ std::list<in_addr> ctorrent_client::get_servers_list()
   std::string line;
   int ret;
 
+  /* TODO: magic string */
   std::ifstream servers_list_stream( "/usr/local/share/ctorrent/servers_list.txt" );
 
   if( !servers_list_stream.is_open() )
-    throw std::string( "no \"servers_list.txt\" file." );
+    throw std::runtime_error( "no \"servers_list.txt\" file." );
 
   while( std::getline( servers_list_stream, line ) )
   {
@@ -188,14 +188,11 @@ std::list<in_addr> ctorrent_client::get_servers_list()
 
     ret = inet_pton( AF_INET, line.c_str(), &address );
     if( ret != 1 )
-    {
-      BOOST_LOG_TRIVIAL( error ) << "[client] [error] inet_pton(): " << ret << std::endl;
-      throw std::string( "an error while trying to get binary representation of ipv4 address." );
-    }
+      throw std::system_error( errno, std::system_category(),
+                               "an error while trying to get binary representation of ipv4 address, inet_pton" );
 
     servers_list.push_back( address );
   }
 
   return servers_list;
 }
-

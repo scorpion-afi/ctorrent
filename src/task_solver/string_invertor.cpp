@@ -30,12 +30,10 @@ static_assert( std::is_pod<reverse_string_data>::value, "reverse_string_data has
 
 string_invertor::string_invertor()
 {
-  assert( m_chunk_size != 0 );
-
   std::ifstream method_src_file( src_path );
 
   if( !method_src_file.is_open() )
-    throw std::string( "no \"" + src_path + "\" file." );
+    throw std::runtime_error( "string_invertor: no \"" + src_path + "\" file." );
 
   std::stringstream tmp;
 

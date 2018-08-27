@@ -76,6 +76,7 @@ notify_lock_queue<T> notify_lock_queue<T>::operator=( const notify_lock_queue<T>
   std::unique_lock<std::mutex> lk_lhs( mtx, std::defer_lock );
   std::unique_lock<std::mutex> lk_rhs( other.mtx, std::defer_lock );
 
+  /* TODO: move to std::scoped_lock */
   std::lock( lk_lhs, lk_rhs );
 
   max_size = other.max_size;

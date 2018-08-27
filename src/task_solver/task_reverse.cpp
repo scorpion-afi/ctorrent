@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <algorithm>
 
 #include "ctorrent_protocols.h"
 
@@ -26,9 +27,7 @@ extern "C" std::unique_ptr<const calc_result> compute( const calc_chunk& co )
   res->data = new char[reverse_data->str_size];
   res->data_size = reverse_data->str_size;
 
-  /* reverse a string */
-  for( std::size_t i = 0, j = reverse_data->str_size - 1; i < reverse_data->str_size; ++i, --j )
-    res->data[j] = str[i];
+  std::reverse_copy( str, str + reverse_data->str_size, res->data );
 
   return res;
 }

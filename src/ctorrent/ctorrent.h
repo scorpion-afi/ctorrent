@@ -10,8 +10,11 @@
 
 #include <string>
 #include <memory>
+#include <exception>
 
 #include <arpa/inet.h> /* IPv4 */
+
+#include <boost/log/trivial.hpp>
 
 #include "ctorrent_protocols.h"
 #include "epoll_event_loop.h"
@@ -28,7 +31,8 @@ protected:
     std::string address( INET_ADDRSTRLEN, '\0' );
 
     if( !inet_ntop( AF_INET, &ipv4, &address.front(), address.size() ) )
-      throw std::string( "an error while trying to get the text representation of an ivp4 address." );
+      throw std::system_error( errno, std::system_category(), "an error while trying to get the text representation"
+          " of an ivp4 address, inet_pton" );
 
     return address;
   }
@@ -36,5 +40,14 @@ protected:
 protected:
   static const in_port_t port_number = 50610;  /* why this one, why not? */
 };
+
+/* TODO: think about this way... */
+#if 0
+static void throw_exception( const std::exception& ex )
+{
+  BOOST_LOG_TRIVIAL( error ) << ex.what();
+  throw ex;
+}
+#endif
 
 #endif /* CTORRENT_H_ */

@@ -29,10 +29,10 @@ void split_string( const std::string& str, std::size_t chunk_size, func f )
   std::size_t substr_num, substr_size, last_substr_size;
 
   if( !str.size() )
-    throw std::string( "the string to split has no data." );
+    throw std::invalid_argument( "split_string: the string to split has no data." );
 
   if( !chunk_size )
-    throw std::string( "the m_chunk_size can't be a zero." );
+    throw std::invalid_argument( "split_string: the m_chunk_size can't be a zero." );
 
   substr_num = std::ceil( str.size() / (chunk_size * 1.0) );
   substr_size = str.size() < chunk_size ? str.size() : chunk_size;

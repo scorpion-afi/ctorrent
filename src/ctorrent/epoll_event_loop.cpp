@@ -18,14 +18,7 @@ epoll_event_loop::epoll_event_loop()
 {
   epoll_fd = epoll_create( 1 );
   if( epoll_fd < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[error] epoll_create(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-    throw std::string( "an error while trying to create an epoll instance." );
-  }
+    throw std::system_error( errno, std::system_category(), "epoll_create" );
 
   BOOST_LOG_TRIVIAL( debug ) << "epoll: create the epoll instance";
 }
@@ -129,14 +122,7 @@ int epoll_event_loop::get_fd() const
 {
   int fd = dup( epoll_fd );
   if( fd < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[error] dup(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-    throw std::string( "an error while trying to dup epoll fd." );
-  }
+    throw std::system_error( errno, std::system_category(), "dup" );
 
   BOOST_LOG_TRIVIAL( debug ) << "epoll: dup epoll_fd " << epoll_fd << " to " << fd;
 
@@ -156,14 +142,7 @@ void epoll_event_loop::handle_events()
     return;
 
   if( evs_amount < 0 )
-  {
-    int err = errno;
-    std::array<char, 256> buf;
-
-    BOOST_LOG_TRIVIAL( error ) << "[server] [error] epoll_wait(): " <<
-        strerror_r( err, &buf.front(), buf.size() ) << std::endl;
-    throw std::string( "an error while trying to get the events." );
-  }
+    throw std::system_error( errno, std::system_category(), "epoll_wait" );
 
   BOOST_LOG_TRIVIAL( debug ) << "epoll: handle the bunch of events...";
 

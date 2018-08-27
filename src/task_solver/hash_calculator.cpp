@@ -34,12 +34,10 @@ static_assert( std::is_pod<hash_data>::value, "hash_data has to be a POD type" )
 
 hash_calculator::hash_calculator()
 {
-  assert( m_chunk_size != 0 );
-
   std::ifstream method_src_file( src_path );
 
   if( !method_src_file.is_open() )
-    throw std::string( "no \"" + src_path + "\" file." );
+    throw std::runtime_error( "hash_calculator: no \"" + src_path + "\" file." );
 
   std::stringstream tmp;
 

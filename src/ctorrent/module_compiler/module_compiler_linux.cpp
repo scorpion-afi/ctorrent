@@ -33,7 +33,7 @@ regular_file module_compiler_linux::compile( const regular_file& src_file ) cons
    *       but what about std::string() is it a such one? */
   child_pid = fork();
   if( child_pid < 0 )
-    throw std::string( "a fail while 'fork' syscall." );
+    throw std::system_error( errno, std::system_category(), "fork" );
 
   if( !child_pid )
   {
@@ -43,10 +43,7 @@ regular_file module_compiler_linux::compile( const regular_file& src_file ) cons
     execle( "/usr/bin/g++", "/usr/bin/g++", "--shared", "-o", module_file.get_file_name().c_str(),
             src_file.get_file_name().c_str(), "-fpic", "-fPIC", "-g3", "-O0", (char*)NULL, env_vars );
 
-    std::stringstream err_stream;
-
-    err_stream << "module_compiler_linux: execle couldn't launch a compiler, err: " << errno << ".";
-    throw std::string( err_stream.str() );
+    throw std::system_error( errno, std::system_category(), "execle couldn't launch a compiler" );
   }
 
   int child_status;
@@ -56,16 +53,16 @@ regular_file module_compiler_linux::compile( const regular_file& src_file ) cons
 
   ret = waitpid( child_pid, &child_status, 0 );
   if( ret < 0)
-    throw std::string( "a fail while 'waitpid' syscall." );
+    throw std::system_error( errno, std::system_category(), "waitpid" );
 
   ret = WIFEXITED(child_status);
   if( ret )
   {
     if( WEXITSTATUS(child_status) != EXIT_SUCCESS)
-      throw std::string( "a complier process returned back an error." );
+      throw std::runtime_error( "a complier process returned back an error" );
   }
   else
-    throw std::string( "a compiler process has stopped abnormally." );
+    throw std::runtime_error( "a compiler process has stopped abnormally." );
 
   return module_file;
 }

@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include <sstream>
 
+#include <boost/log/trivial.hpp>
 
 module_loader_linux::module_loader_linux() :
   module_hndl(nullptr)
@@ -29,13 +30,12 @@ void module_loader_linux::load( const std::string& module_name )
     return;
 
   module_hndl = dlopen( module_name.c_str(), RTLD_LAZY );
-
   if( !module_hndl )
   {
     std::stringstream err_stream;
 
     err_stream << "fail to load a '" << module_name << "' module: " << dlerror() << ".";
-    throw std::string( err_stream.str() );
+    throw std::runtime_error( err_stream.str() );
   }
 }
 
@@ -54,7 +54,7 @@ void* module_loader_linux::get_symbol( const std::string& symbol_name ) const
   void* symbol;
 
   if( !module_hndl )
-    throw std::string( "no managed dynamic module" );
+    throw std::runtime_error( "no managed dynamic module" );
 
   dlerror();  /* reset previous errors if any */
 
@@ -67,7 +67,7 @@ void* module_loader_linux::get_symbol( const std::string& symbol_name ) const
 
     err_stream << "fail to locale a '" << symbol_name << "' symbol: " << dl_err_str << ", symbol: "
         << symbol << ".";
-    throw std::string( err_stream.str() );
+    throw std::runtime_error( err_stream.str() );
   }
 
   return symbol;

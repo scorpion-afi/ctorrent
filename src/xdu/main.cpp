@@ -13,6 +13,7 @@
 #include <string>
 #include <cstdlib>
 #include <memory>
+#include <system_error>
 
 #include <poll.h>
 #include <sys/signalfd.h>
@@ -31,9 +32,6 @@ int main( void )
 {
   try
   {
-    init_boost_log();
-
-    ctorrent_server xdu;
     pollfd events_fd[2];
     sigset_t sig_mask;
     int sig_fd;
@@ -41,15 +39,20 @@ int main( void )
     sigemptyset( &sig_mask );
     sigaddset( &sig_mask, SIGINT );
 
+    init_boost_log();
+
     /* block signals (current thread signal mask + sig_mask) so that they aren't handled
      * according to their default dispositions;
      * signals will be pending till someone consumes 'em from the signal queue */
-    if( sigprocmask( SIG_BLOCK, &sig_mask, NULL ) < 0 )
-      throw std::string( "an error while sigprocmask syscall." );
+    if( pthread_sigmask( SIG_BLOCK, &sig_mask, NULL ) < 0 )
+      throw std::system_error( errno, std::system_category(), "pthread_sigmask" );
+
+    /* the server has to be initialized after we've blocked some signals */
+    ctorrent_server xdu;
 
     sig_fd = signalfd( -1, &sig_mask, 0 );
     if( sig_fd < 0 )
-      throw std::string( "an error while signalfd syscall." );
+      throw std::system_error( errno, std::system_category(), "signalfd" );
 
     /* fds should be set to '-1' to be ignored by poll */
     for( auto& ev : events_fd )
@@ -73,7 +76,7 @@ int main( void )
         continue;
 
       if( ret < 0 )
-        throw std::string( "an error while poll syscall." );
+        throw std::system_error( errno, std::system_category(), "poll" );
 
       if( events_fd[0].revents == POLLIN )
         xdu.handle_events();
@@ -87,19 +90,14 @@ int main( void )
       }
     }
   }
-  catch( const std::string &err )
+  catch( const std::system_error& ex )
   {
-    BOOST_LOG_TRIVIAL( info );
-    BOOST_LOG_TRIVIAL( info ) << "an exception: " << err;
+    BOOST_LOG_TRIVIAL( error );
+    BOOST_LOG_TRIVIAL( error ) << ex.what() << " (" << ex.code().value() << ")";
   }
-  catch( const std::exception &exception )
+  catch( const std::exception& ex )
   {
-    BOOST_LOG_TRIVIAL( info );
-    BOOST_LOG_TRIVIAL( info ) << "an exception: " << exception.what();
-  }
-  catch(...)
-  {
-    BOOST_LOG_TRIVIAL( info );
-    BOOST_LOG_TRIVIAL( info ) << "some exception has been caught.";
+    BOOST_LOG_TRIVIAL( error );
+    BOOST_LOG_TRIVIAL( error ) << "an exception: " << ex.what();
   }
 }

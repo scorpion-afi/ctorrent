@@ -56,18 +56,13 @@ void send_thread::operator()()
        * when it's needed */
       remote_cl->serialize_and_send( *result );
     }
-    catch( const std::string &err )
+    catch( const std::system_error& ex )
     {
-      BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: an exception: " << err;
+      BOOST_LOG_TRIVIAL( error ) << "send_thread [" << get_id() << "]: " << ex.what() << " (" << ex.code().value() << ")";
     }
-    catch( const std::exception &exception )
+    catch( const std::exception& ex )
     {
-      BOOST_LOG_TRIVIAL( info ) << "send_thread [" << get_id() << "]: an std exception: " << exception.what();
-    }
-    catch(...)
-    {
-      BOOST_LOG_TRIVIAL( error ) << "send_thread [" << get_id() << "]: some exception happened";
-      /* TODO: delay till it's time to sort out with exceptions handling */
+      BOOST_LOG_TRIVIAL( error ) << "send_thread [" << get_id() << "]: " << ex.what();
     }
   }
 }

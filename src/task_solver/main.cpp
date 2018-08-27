@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <exception>
+#include <system_error>
 
 #include "hash_calculator.h"
 #include "string_invertor.h"
@@ -17,18 +18,18 @@
 
 int main( void )
 {
-  std::string str;
-
-  init_boost_log();
-
-  std::getline( std::cin, str );
-
-  BOOST_LOG_TRIVIAL( info );
-  BOOST_LOG_TRIVIAL( info ) << "get started to perform some actions on the string...";
-  BOOST_LOG_TRIVIAL( info );
-
   try
   {
+    std::string str;
+
+    init_boost_log();
+
+    std::getline( std::cin, str );
+
+    BOOST_LOG_TRIVIAL( info );
+    BOOST_LOG_TRIVIAL( info ) << "get started to perform some actions on the string...";
+    BOOST_LOG_TRIVIAL( info );
+
     BOOST_LOG_TRIVIAL( info ) << "calculate a hash...";
     BOOST_LOG_TRIVIAL( info );
 
@@ -38,6 +39,7 @@ int main( void )
     BOOST_LOG_TRIVIAL( info ) << "a hash for the: \"" << str << "\": " << hash;
     BOOST_LOG_TRIVIAL( info );
 
+
     BOOST_LOG_TRIVIAL( info ) << "calculate an inversion...";
     BOOST_LOG_TRIVIAL( info );
 
@@ -46,17 +48,14 @@ int main( void )
     BOOST_LOG_TRIVIAL( info );
     BOOST_LOG_TRIVIAL( info ) << "an inversion for the: \"" << str << "\": " << iverted_str;
   }
-  catch( const std::string &err )
+  catch( const std::system_error& ex )
   {
-    BOOST_LOG_TRIVIAL( info ) << "an exception: " << err;
-    return -1;
+    BOOST_LOG_TRIVIAL( error );
+    BOOST_LOG_TRIVIAL( error ) << ex.what() << " (" << ex.code().value() << ")";
   }
-  catch( const std::exception &exception )
+  catch( const std::exception& ex )
   {
-    BOOST_LOG_TRIVIAL( info ) << "an exception: " << exception.what();
-  }
-  catch(...)
-  {
-    BOOST_LOG_TRIVIAL( info ) << "some exception has been caught.";
+    BOOST_LOG_TRIVIAL( error );
+    BOOST_LOG_TRIVIAL( error ) << "an exception: " << ex.what();
   }
 }
