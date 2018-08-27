@@ -146,7 +146,7 @@ ctorrent_client::results ctorrent_client::receive()
       BOOST_LOG_TRIVIAL( debug ) << elm.get()->get_sequence_id();
 
     BOOST_LOG_TRIVIAL( debug ) << "ctorrent_client: sort a received objects, count: " << received_objects.size();
-    received_objects.sort();
+    received_objects.sort( [] ( const auto& a, const auto&b ) { return *a < *b; } );
 
     for( const auto& elm : received_objects )
       BOOST_LOG_TRIVIAL( debug ) << elm.get()->get_sequence_id();
