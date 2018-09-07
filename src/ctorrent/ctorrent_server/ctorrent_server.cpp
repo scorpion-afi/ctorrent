@@ -27,6 +27,7 @@
 #include "executor_thread.h"
 #include "send_thread.h"
 #include "./computers/base_computer.h"
+#include "file_descriptor.h"
 
 #include "ctorrent_server.h"
 
@@ -38,7 +39,6 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
 {
   std::string interface_ip_text;
   sockaddr_in s_addr;
-  int listen_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   int ret;
 
   /* look https://github.com/morristech/android-ifaddrs for ifaddrs.h implementation for Android */
@@ -50,7 +50,7 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
   BOOST_LOG_TRIVIAL( info ) << "ctorrent_server: ip address for the " << interface_name << " interface: " << interface_ip_text.c_str();
 
   /* create a stream-based, reliable, bidirectional socket within AF_INET protocols family */
-  listen_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+  file_descriptor listen_socket( socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 ) );
   if( listen_socket < 0 )
     throw std::system_error( errno, std::system_category(), "an error while trying to create a socket" );
 
@@ -88,10 +88,6 @@ ctorrent_server::ctorrent_server() : interface_ip(get_interface_ipv4_address( in
   epoll.add_event_source( listen_socket, epoll_event_loop::event_type::EPOLL_IN,
                           std::bind(&ctorrent_server::new_client_handler, this, std::placeholders::_1, std::placeholders::_2),
                           nullptr, "listen socket" );
-
-  /* it's epoll responsibility to manage fds, so we can close listen_socket here */
-  close( listen_socket );
-
   start_threads();
 
   /* register all available computers (tasks' executors) */
@@ -179,7 +175,6 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
 {
   sockaddr_in peer_addr;
   socklen_t addr_len;
-  int peer_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   std::stringstream tmp;
 
   addr_len = sizeof(peer_addr);
@@ -187,7 +182,8 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
 
   /* accept incoming connection request from listen_socket's queue of pending connection requests
    * return accepted socket that is in connected (to the remote peer) state */
-  peer_socket = accept4( listen_socket, reinterpret_cast<sockaddr*>(&peer_addr), &addr_len, SOCK_CLOEXEC );
+  file_descriptor peer_socket( accept4( listen_socket, reinterpret_cast<sockaddr*>(&peer_addr),
+                                        &addr_len, SOCK_CLOEXEC ) );
   if( peer_socket < 0 )
     throw std::system_error( errno, std::system_category(), "an error while trying to accept a client request" );
 
@@ -220,9 +216,6 @@ void ctorrent_server::new_client_handler( int listen_socket, void* data )
 
   std::get<1>(*tuple) = in_idx;
   std::get<2>(*tuple) = rdhup_idx;
-
-  /* it's epoll responsibility to manage fds, so we can close peer_socket here */
-  close( peer_socket );
 }
 
 void ctorrent_server::destroy_client_handler( int listen_socket, void* data, std::shared_ptr<destroy_cl_tuple> tuple )

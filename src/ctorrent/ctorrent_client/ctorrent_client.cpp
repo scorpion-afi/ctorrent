@@ -21,6 +21,7 @@
 #include <boost/log/trivial.hpp>
 
 #include "task_distributer.h"
+#include "file_descriptor.h"
 
 #include "ctorrent_client.h"
 
@@ -28,7 +29,6 @@
 ctorrent_client::ctorrent_client() : current_seq_id(0)
 {
   sockaddr_in server_addr;
-  int remote_socket; /* TODO: wrap a socket to provide a RAII mechanism */
   int ret;
 
   std::list<in_addr> servers_list = get_servers_list();
@@ -39,7 +39,7 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
 
   for( auto& server : servers_list )
   {
-    remote_socket = socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 );
+    file_descriptor remote_socket( socket( AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 ) );
     if( remote_socket < 0 )
       throw std::system_error( errno, std::system_category(), "an error while trying to create a socket" );
 
@@ -60,7 +60,6 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
       BOOST_LOG_TRIVIAL( error ) << "ctorrent_client: connect(): " <<
           strerror_r( err, &buf.front(), buf.size() );
 
-      close( remote_socket );
       continue; /* just go to the next server if a current one isn't accessible */
     }
 
@@ -91,9 +90,6 @@ ctorrent_client::ctorrent_client() : current_seq_id(0)
                             nullptr, "remote server socket" );
 
     remote_servers_list.push_back( std::move(rs) );
-
-    /* it's epoll responsibility to manage fds, so we can close peer_socket here */
-    close( remote_socket );
   }
 
   BOOST_LOG_TRIVIAL( debug ) << "ctorrent_client: amount of connected servers: " << remote_servers_list.size();
